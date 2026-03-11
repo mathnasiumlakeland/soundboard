@@ -17,6 +17,7 @@ const audio = document.querySelector("#soundboard-audio");
 const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
+let playbackToken = 0;
 
 function setAnnouncement(message) {
 	if (announcement) {
@@ -66,6 +67,18 @@ function rememberObjectUrl(id, objectUrl) {
 	}
 
 	objectUrlById.set(id, objectUrl);
+}
+
+function stopCurrentPlayback() {
+	if (!audio) {
+		return;
+	}
+
+	audio.pause();
+	audio.currentTime = 0;
+	audio.removeAttribute("src");
+	audio.load();
+	buttons.forEach((button) => button.classList.remove("is-playing"));
 }
 
 async function restoreCachedSounds() {
@@ -182,18 +195,26 @@ async function playButton(button) {
 	pulseButton(button);
 
 	const playbackUrl = objectUrlById.get(id) ?? sourceUrl;
+	const currentToken = ++playbackToken;
 
 	try {
-		audio.pause();
-		buttons.forEach((candidate) => candidate.classList.remove("is-playing"));
+		stopCurrentPlayback();
 		audio.src = playbackUrl;
-		audio.currentTime = 0;
 		button.classList.add("is-playing");
 		await audio.play();
 	} catch {
+		if (currentToken !== playbackToken) {
+			return;
+		}
+
 		button.classList.remove("is-playing");
 		setStatus(id, "error");
 		setAnnouncement(`Playback for ${label} was blocked. Click the button again.`);
+		return;
+	}
+
+	if (currentToken !== playbackToken) {
+		stopCurrentPlayback();
 		return;
 	}
 
@@ -235,6 +256,8 @@ if (audio) {
 }
 
 window.addEventListener("beforeunload", () => {
+	stopCurrentPlayback();
+
 	for (const timeout of pressTimeoutById.values()) {
 		window.clearTimeout(timeout);
 	}

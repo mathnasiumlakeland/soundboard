@@ -66,6 +66,7 @@ select {
 	border: none;
 	cursor: pointer;
 	padding: 0;
+	touch-action: manipulation;
 	-webkit-tap-highlight-color: transparent;
 }
 
@@ -113,6 +114,8 @@ select {
 	color: #6c757d;
 	cursor: pointer;
 	font-family: inherit;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .sr-only {
@@ -166,6 +169,27 @@ select {
 
 @media only screen and (max-width: 770px) {
 	#content {
-		margin: 20px auto 100px;
+		margin: 16px auto 72px;
+	}
+}
+
+@media only screen and (max-width: 520px) {
+	#content {
+		margin: 12px auto 56px;
+	}
+
+	#instants_container {
+		padding: 0 12px;
+	}
+
+	.instants {
+		grid-template-columns: repeat(2, 94px);
+		gap: 22px 12px;
+	}
+
+	.instant-link {
+		font-size: 13px;
+		line-height: 1.3em;
+		height: 2.6em;
 	}
 }
