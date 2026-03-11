@@ -1,6 +1,5 @@
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
-const UNLOCKED_IDS_KEY = "mathnasium-soundboard-unlocked-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const PRESS_DURATION_MS = 135;
 const POINTER_CLICK_SUPPRESSION_MS = 350;
@@ -22,26 +21,7 @@ const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
 const lastPointerTriggerAtById = new Map();
-const unlockedIds = readUnlockedIds();
 let playbackToken = 0;
-
-function readUnlockedIds() {
-	try {
-		const rawValue = window.sessionStorage.getItem(UNLOCKED_IDS_KEY);
-		const parsedValue = rawValue ? JSON.parse(rawValue) : [];
-		return new Set(Array.isArray(parsedValue) ? parsedValue.filter((value) => typeof value === "string") : []);
-	} catch {
-		return new Set();
-	}
-}
-
-function persistUnlockedIds() {
-	try {
-		window.sessionStorage.setItem(UNLOCKED_IDS_KEY, JSON.stringify([...unlockedIds]));
-	} catch {
-		// Ignore storage failures and fall back to prompting again later.
-	}
-}
 
 function setAnnouncement(message) {
 	if (announcement) {
@@ -105,20 +85,16 @@ function wasRecentlyTriggeredByPointer(id) {
 }
 
 async function ensureButtonAccess(button) {
-	const id = button.dataset.id;
 	const label = button.dataset.label ?? "this sound";
 	const password = button.dataset.password;
 
-	if (!id || !password) {
-		return true;
-	}
-
-	if (unlockedIds.has(id)) {
+	if (!password) {
 		return true;
 	}
 
 	const enteredPassword = window.prompt(`Enter the password for ${label}.`);
 	if (enteredPassword === null) {
+		setAnnouncement(`${label} cancelled.`);
 		return false;
 	}
 
@@ -127,9 +103,7 @@ async function ensureButtonAccess(button) {
 		return false;
 	}
 
-	unlockedIds.add(id);
-	persistUnlockedIds();
-	setAnnouncement(`${label} unlocked for this session.`);
+	setAnnouncement(`Password accepted for ${label}.`);
 	return true;
 }
 
