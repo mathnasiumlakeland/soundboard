@@ -1,4 +1,6 @@
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
+const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
+const CACHE_TTL_MS = 60 * 60 * 1000;
 const PRESS_DURATION_MS = 170;
 
 const statusText = {
@@ -69,6 +71,73 @@ function rememberObjectUrl(id, objectUrl) {
 	objectUrlById.set(id, objectUrl);
 }
 
+function forgetObjectUrl(id) {
+	const existingObjectUrl = objectUrlById.get(id);
+	if (!existingObjectUrl) {
+		return;
+	}
+
+	URL.revokeObjectURL(existingObjectUrl);
+	objectUrlById.delete(id);
+}
+
+function readCacheMeta() {
+	try {
+		return JSON.parse(window.localStorage.getItem(CACHE_META_KEY) ?? "{}");
+	} catch {
+		return {};
+	}
+}
+
+function writeCacheMeta(meta) {
+	try {
+		window.localStorage.setItem(CACHE_META_KEY, JSON.stringify(meta));
+	} catch {
+		// Ignore storage failures and fall back to uncapped browser behavior.
+	}
+}
+
+function getCachedAt(sourceUrl) {
+	const meta = readCacheMeta();
+	const cachedAt = meta[sourceUrl];
+	return typeof cachedAt === "number" ? cachedAt : 0;
+}
+
+function rememberCacheTimestamp(sourceUrl) {
+	const meta = readCacheMeta();
+	meta[sourceUrl] = Date.now();
+	writeCacheMeta(meta);
+}
+
+function forgetCacheTimestamp(sourceUrl) {
+	const meta = readCacheMeta();
+	if (!(sourceUrl in meta)) {
+		return;
+	}
+
+	delete meta[sourceUrl];
+	writeCacheMeta(meta);
+}
+
+function isCacheFresh(sourceUrl) {
+	const cachedAt = getCachedAt(sourceUrl);
+	return cachedAt > 0 && Date.now() - cachedAt <= CACHE_TTL_MS;
+}
+
+async function purgeExpiredCacheEntry(id, sourceUrl) {
+	forgetObjectUrl(id);
+	forgetCacheTimestamp(sourceUrl);
+
+	if ("caches" in window) {
+		try {
+			const cache = await caches.open(SOUND_CACHE_NAME);
+			await cache.delete(sourceUrl);
+		} catch {
+			// Ignore cache cleanup failures.
+		}
+	}
+}
+
 function stopCurrentPlayback() {
 	if (!audio) {
 		return;
@@ -95,6 +164,11 @@ async function restoreCachedSounds() {
 				const sourceUrl = button.dataset.url;
 
 				if (!id || !sourceUrl || objectUrlById.has(id)) {
+					return;
+				}
+
+				if (!isCacheFresh(sourceUrl)) {
+					await purgeExpiredCacheEntry(id, sourceUrl);
 					return;
 				}
 
@@ -125,9 +199,13 @@ async function warmSound(button) {
 		return;
 	}
 
-	if (objectUrlById.has(id)) {
+	if (objectUrlById.has(id) && isCacheFresh(sourceUrl)) {
 		setStatus(id, "cached");
 		return;
+	}
+
+	if (objectUrlById.has(id) && !isCacheFresh(sourceUrl)) {
+		await purgeExpiredCacheEntry(id, sourceUrl);
 	}
 
 	const inFlightWarmup = warmupById.get(id);
@@ -141,7 +219,11 @@ async function warmSound(button) {
 				const cache = await caches.open(SOUND_CACHE_NAME);
 				const cachedResponse = await cache.match(sourceUrl);
 
-				if (cachedResponse && cachedResponse.type !== "opaque") {
+				if (cachedResponse && !isCacheFresh(sourceUrl)) {
+					await purgeExpiredCacheEntry(id, sourceUrl);
+				}
+
+				if (cachedResponse && cachedResponse.type !== "opaque" && isCacheFresh(sourceUrl)) {
 					const cachedBlob = await cachedResponse.blob();
 					if (cachedBlob.size) {
 						rememberObjectUrl(id, URL.createObjectURL(cachedBlob));
@@ -169,6 +251,7 @@ async function warmSound(button) {
 			}
 
 			rememberObjectUrl(id, URL.createObjectURL(blob));
+			rememberCacheTimestamp(sourceUrl);
 			setStatus(id, "cached");
 		} catch {
 			if (!objectUrlById.has(id)) {
@@ -193,6 +276,10 @@ async function playButton(button) {
 	}
 
 	pulseButton(button);
+
+	if (!isCacheFresh(sourceUrl)) {
+		await purgeExpiredCacheEntry(id, sourceUrl);
+	}
 
 	const playbackUrl = objectUrlById.get(id) ?? sourceUrl;
 	const currentToken = ++playbackToken;
