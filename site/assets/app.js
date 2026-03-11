@@ -12,7 +12,6 @@ const statusText = {
 };
 
 const buttons = [...document.querySelectorAll("[data-sound]")];
-const soundLabels = [...document.querySelectorAll("[data-sound-label]")];
 const announcement = document.querySelector("#announcement");
 const audio = document.querySelector("#soundboard-audio");
 const passwordModal = document.querySelector("#password-modal");
@@ -428,28 +427,6 @@ buttons.forEach((button) => {
 		}
 
 		void playButton(button);
-	});
-});
-
-soundLabels.forEach((label) => {
-	label.addEventListener("pointerdown", () => {
-		const targetId = label.dataset.soundLabel;
-		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
-		if (button) {
-			void playButton(button);
-		}
-	});
-
-	label.addEventListener("click", (event) => {
-		if (event.detail !== 0) {
-			return;
-		}
-
-		const targetId = label.dataset.soundLabel;
-		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
-		if (button) {
-			void playButton(button);
-		}
 	});
 });
 

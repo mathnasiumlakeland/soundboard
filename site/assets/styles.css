@@ -112,19 +112,13 @@ select {
 .instant-link {
 	display: block;
 	width: 100%;
-	border: 0;
-	padding: 0;
-	background: none;
 	font-size: 14px;
 	text-decoration: none;
 	line-height: 1.4em;
 	height: 2.8em;
 	overflow: hidden;
 	color: #6c757d;
-	cursor: pointer;
 	font-family: inherit;
-	touch-action: manipulation;
-	-webkit-tap-highlight-color: transparent;
 }
 
 .password-modal[hidden] {
