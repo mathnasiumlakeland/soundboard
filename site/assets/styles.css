@@ -11,11 +11,16 @@ html,
 body {
 	margin: 0;
 	min-height: 100%;
+	width: 100%;
+	max-width: 100%;
+	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 body {
 	background: #ffffff;
 	color: #212529;
+	position: relative;
 }
 
 button,
@@ -29,6 +34,7 @@ select {
 	text-align: center;
 	overflow: hidden;
 	width: 100%;
+	max-width: 100vw;
 	margin: 20px auto 140px;
 	background: transparent;
 }
@@ -36,6 +42,8 @@ select {
 #instants_container {
 	margin: 30px auto;
 	padding: 0 16px;
+	max-width: 100%;
+	overflow-x: clip;
 	text-align: center;
 }
 
@@ -45,6 +53,7 @@ select {
 	grid-template-columns: repeat(auto-fit, 94px);
 	gap: 30px 10px;
 	justify-content: center;
+	max-width: 100%;
 }
 
 .instant {
