@@ -16,12 +16,18 @@ const buttons = [...document.querySelectorAll("[data-sound]")];
 const soundLabels = [...document.querySelectorAll("[data-sound-label]")];
 const announcement = document.querySelector("#announcement");
 const audio = document.querySelector("#soundboard-audio");
+const passwordModal = document.querySelector("#password-modal");
+const passwordForm = document.querySelector("#password-form");
+const passwordInput = document.querySelector("#password-input");
+const passwordModalTitle = document.querySelector("#password-modal-title");
+const passwordCancelButtons = [...document.querySelectorAll("[data-password-cancel]")];
 
 const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
 const lastPointerTriggerAtById = new Map();
 let playbackToken = 0;
+let activePasswordRequest = null;
 
 function setAnnouncement(message) {
 	if (announcement) {
@@ -92,7 +98,7 @@ async function ensureButtonAccess(button) {
 		return true;
 	}
 
-	const enteredPassword = window.prompt(`Enter the password for ${label}.`);
+	const enteredPassword = await requestPassword(label);
 	if (enteredPassword === null) {
 		setAnnouncement(`${label} cancelled.`);
 		return false;
@@ -105,6 +111,64 @@ async function ensureButtonAccess(button) {
 
 	setAnnouncement(`Password accepted for ${label}.`);
 	return true;
+}
+
+function requestPassword(label) {
+	if (!passwordModal || !passwordForm || !passwordInput || !passwordModalTitle) {
+		return Promise.resolve(window.prompt(`Enter the password for ${label}.`));
+	}
+
+	if (activePasswordRequest) {
+		passwordModalTitle.textContent = `Enter password for ${label}`;
+		passwordInput.value = "";
+		window.setTimeout(() => passwordInput.focus(), 0);
+		return activePasswordRequest.promise;
+	}
+
+	passwordModal.hidden = false;
+	passwordModalTitle.textContent = `Enter password for ${label}`;
+	passwordInput.value = "";
+
+	const promise = new Promise((resolve) => {
+		activePasswordRequest = { resolve, promise: null };
+
+		const cleanup = (value) => {
+			passwordModal.hidden = true;
+			passwordForm.removeEventListener("submit", handleSubmit);
+			passwordCancelButtons.forEach((button) => {
+				button.removeEventListener("click", handleCancel);
+			});
+			document.removeEventListener("keydown", handleKeyDown);
+			activePasswordRequest = null;
+			resolve(value);
+		};
+
+		const handleSubmit = (event) => {
+			event.preventDefault();
+			cleanup(passwordInput.value);
+		};
+
+		const handleCancel = () => {
+			cleanup(null);
+		};
+
+		const handleKeyDown = (event) => {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				cleanup(null);
+			}
+		};
+
+		passwordForm.addEventListener("submit", handleSubmit);
+		passwordCancelButtons.forEach((button) => {
+			button.addEventListener("click", handleCancel);
+		});
+		document.addEventListener("keydown", handleKeyDown);
+		window.setTimeout(() => passwordInput.focus(), 0);
+	});
+
+	activePasswordRequest.promise = promise;
+	return promise;
 }
 
 function rememberObjectUrl(id, objectUrl) {

@@ -211,9 +211,58 @@
 							Laugh Track
 						</button>
 					</article>
+
+					<article class="instant">
+						<div class="circle small-button-background" style="background-color: #6f97f8"></div>
+						<button
+							type="button"
+							class="small-button"
+							data-sound
+							data-id="applause"
+							data-label="Applause"
+							data-url="https://www.myinstants.com/media/sounds/aplausos_2.mp3"
+							aria-label="Play Applause"
+						></button>
+						<div class="small-button-shadow" aria-hidden="true"></div>
+						<button type="button" class="instant-link" data-sound-label="applause">
+							Applause
+						</button>
+					</article>
 				</section>
 			</div>
 		</main>
+
+		<div id="password-modal" class="password-modal" hidden>
+			<div class="password-modal-backdrop" data-password-cancel></div>
+			<div
+				class="password-modal-panel"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="password-modal-title"
+			>
+				<form id="password-form" class="password-form">
+					<h2 id="password-modal-title" class="password-modal-title">Enter password</h2>
+					<input
+						id="password-input"
+						class="password-input"
+						type="password"
+						autocomplete="off"
+						autocapitalize="off"
+						autocorrect="off"
+						spellcheck="false"
+						inputmode="text"
+						aria-label="Password"
+					/>
+					<div class="password-actions">
+						<button type="button" class="password-button password-button-secondary" data-password-cancel>
+							Cancel
+						</button>
+						<button type="submit" class="password-button">Play
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
 
 		<p id="announcement" class="sr-only" aria-live="polite">
 			Tap a button to play a sound. First use warms a local browser cache when allowed.
