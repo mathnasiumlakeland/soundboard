@@ -6,110 +6,55 @@
 		<title>Soundboard</title>
 		<meta
 			name="description"
-			content="A tiny soundboard with glossy arcade buttons and browser-side audio caching."
+			content="A tiny soundboard with browser-side audio caching."
 		/>
 		<link rel="stylesheet" href="./assets/styles.css" />
 	</head>
 	<body>
-		<section class="soundboard-shell">
-			<div class="soundboard-ambient soundboard-ambient-left" aria-hidden="true"></div>
-			<div class="soundboard-ambient soundboard-ambient-right" aria-hidden="true"></div>
-
-			<div class="page-frame">
-				<header class="hero-panel">
-					<div class="hero-copy">
-						<a class="back-link" href="https://mathnasium.pro/">Back to Mathnasium Pro</a>
-						<p class="eyebrow">Soundboard Prototype</p>
-						<h1>Glossy arcade buttons with two deeply unserious sounds.</h1>
-						<p class="hero-text">
-							Each click plays immediately. In the background the page tries to stash the MP3
-							locally so the next hit can reuse a cached copy instead of pulling it again.
-						</p>
-					</div>
-
-					<div class="status-terminal" aria-live="polite">
-						<span class="status-terminal-label">Status</span>
-						<p id="announcement">
-							Tap a button to play a sound. First use warms a local browser cache when allowed.
-						</p>
-					</div>
-				</header>
-
-				<main class="sound-grid">
-					<article class="sound-card">
+		<main id="content">
+			<div id="instants_container">
+				<section class="instants result-page" aria-label="Sound buttons">
+					<article class="instant">
+						<div class="circle small-button-background" style="background-color: #ff0000"></div>
 						<button
 							type="button"
-							class="sound-button"
+							class="small-button"
 							data-sound
 							data-id="you-stupid"
 							data-label="You Stupid"
 							data-url="https://www.myinstants.com/media/sounds/ustoopid.mp3"
-							aria-describedby="you-stupid-status"
 							aria-label="Play You Stupid"
-							style="
-								--button-top: #ff847f;
-								--button-mid: #ff2a1f;
-								--button-bottom: #850100;
-								--button-rim: #610100;
-								--button-shadow: rgba(113, 10, 2, 0.42);
-								--button-glow: rgba(255, 176, 170, 0.88);
-							"
-						>
-							<span class="sr-only">Play You Stupid</span>
+						></button>
+						<div class="small-button-shadow" aria-hidden="true"></div>
+						<button type="button" class="instant-link" data-sound-label="you-stupid">
+							You Stupid
 						</button>
-
-						<div class="sound-copy">
-							<h2>You Stupid</h2>
-							<p>Short, loud, and aggressively red.</p>
-							<p class="status-pill status-idle" id="you-stupid-status" data-status>
-								Ready
-							</p>
-						</div>
 					</article>
 
-					<article class="sound-card">
+					<article class="instant">
+						<div class="circle small-button-background" style="background-color: #6f97f8"></div>
 						<button
 							type="button"
-							class="sound-button"
+							class="small-button"
 							data-sound
 							data-id="whats-9-plus-10"
 							data-label="What's 9 + 10?"
 							data-url="https://www.myinstants.com/media/sounds/whats-9-plus-10_i5PRvD4.mp3"
-							aria-describedby="whats-9-plus-10-status"
 							aria-label="Play What's 9 + 10?"
-							style="
-								--button-top: #a1c8ff;
-								--button-mid: #5b84fb;
-								--button-bottom: #1f3a92;
-								--button-rim: #1f2b6c;
-								--button-shadow: rgba(21, 49, 142, 0.35);
-								--button-glow: rgba(220, 236, 255, 0.9);
-							"
-						>
-							<span class="sr-only">Play What's 9 + 10?</span>
+						></button>
+						<div class="small-button-shadow" aria-hidden="true"></div>
+						<button type="button" class="instant-link" data-sound-label="whats-9-plus-10">
+							What's 9 + 10?
 						</button>
-
-						<div class="sound-copy">
-							<h2>What's 9 + 10?</h2>
-							<p>For moments that demand exactly one answer.</p>
-							<p class="status-pill status-idle" id="whats-9-plus-10-status" data-status>
-								Ready
-							</p>
-						</div>
 					</article>
-				</main>
-
-				<footer class="source-note">
-					<p>
-						Audio files are currently pulled from <code>myinstants.com</code>. If you want this to
-						be fully reliable long-term, the next step is downloading the MP3s into this repo and
-						serving them locally.
-					</p>
-				</footer>
+				</section>
 			</div>
+		</main>
 
-			<audio id="soundboard-audio" preload="none"></audio>
-		</section>
+		<p id="announcement" class="sr-only" aria-live="polite">
+			Tap a button to play a sound. First use warms a local browser cache when allowed.
+		</p>
+		<audio id="soundboard-audio" preload="none"></audio>
 
 		<script src="./assets/app.js" defer></script>
 	</body>

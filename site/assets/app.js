@@ -10,6 +10,7 @@ const statusText = {
 };
 
 const buttons = [...document.querySelectorAll("[data-sound]")];
+const soundLabels = [...document.querySelectorAll("[data-sound-label]")];
 const announcement = document.querySelector("#announcement");
 const audio = document.querySelector("#soundboard-audio");
 
@@ -214,6 +215,16 @@ buttons.forEach((button) => {
 	button.addEventListener("pointerdown", () => pulseButton(button));
 	button.addEventListener("click", () => {
 		void playButton(button);
+	});
+});
+
+soundLabels.forEach((label) => {
+	label.addEventListener("click", () => {
+		const targetId = label.dataset.soundLabel;
+		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
+		if (button) {
+			void playButton(button);
+		}
 	});
 });
 
