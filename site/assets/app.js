@@ -2,7 +2,6 @@ const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const PRESS_DURATION_MS = 135;
-const POINTER_CLICK_SUPPRESSION_MS = 350;
 
 const statusText = {
 	idle: "Ready",
@@ -25,7 +24,6 @@ const passwordCancelButtons = [...document.querySelectorAll("[data-password-canc
 const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
-const lastPointerTriggerAtById = new Map();
 let playbackToken = 0;
 let activePasswordRequest = null;
 
@@ -72,24 +70,6 @@ function pulseButton(button) {
 	pressTimeoutById.set(id, timeout);
 }
 
-function rememberPointerTrigger(id) {
-	if (!id) {
-		return;
-	}
-
-	lastPointerTriggerAtById.set(id, performance.now());
-}
-
-function wasRecentlyTriggeredByPointer(id) {
-	if (!id) {
-		return false;
-	}
-
-	const lastTriggeredAt = lastPointerTriggerAtById.get(id);
-	return typeof lastTriggeredAt === "number" &&
-		performance.now() - lastTriggeredAt <= POINTER_CLICK_SUPPRESSION_MS;
-}
-
 async function ensureButtonAccess(button) {
 	const label = button.dataset.label ?? "this sound";
 	const password = button.dataset.password;
@@ -115,7 +95,8 @@ async function ensureButtonAccess(button) {
 
 function requestPassword(label) {
 	if (!passwordModal || !passwordForm || !passwordInput || !passwordModalTitle) {
-		return Promise.resolve(window.prompt(`Enter the password for ${label}.`));
+		setAnnouncement(`Password dialog unavailable for ${label}.`);
+		return Promise.resolve(null);
 	}
 
 	if (activePasswordRequest) {
@@ -145,10 +126,13 @@ function requestPassword(label) {
 
 		const handleSubmit = (event) => {
 			event.preventDefault();
+			event.stopPropagation();
 			cleanup(passwordInput.value);
 		};
 
-		const handleCancel = () => {
+		const handleCancel = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
 			cleanup(null);
 		};
 
@@ -435,14 +419,11 @@ async function playButton(button) {
 
 buttons.forEach((button) => {
 	button.addEventListener("pointerdown", () => {
-		const id = button.dataset.id;
-		rememberPointerTrigger(id);
 		void playButton(button);
 	});
 
 	button.addEventListener("click", (event) => {
-		const id = button.dataset.id;
-		if (event.detail !== 0 && wasRecentlyTriggeredByPointer(id)) {
+		if (event.detail !== 0) {
 			return;
 		}
 
@@ -455,17 +436,16 @@ soundLabels.forEach((label) => {
 		const targetId = label.dataset.soundLabel;
 		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
 		if (button) {
-			rememberPointerTrigger(targetId);
 			void playButton(button);
 		}
 	});
 
 	label.addEventListener("click", (event) => {
-		const targetId = label.dataset.soundLabel;
-		if (event.detail !== 0 && wasRecentlyTriggeredByPointer(targetId)) {
+		if (event.detail !== 0) {
 			return;
 		}
 
+		const targetId = label.dataset.soundLabel;
 		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
 		if (button) {
 			void playButton(button);
