@@ -111,6 +111,8 @@ select {
 
 .instant-link {
 	display: block;
+	position: relative;
+	z-index: 1;
 	width: 100%;
 	font-size: 14px;
 	text-decoration: none;
@@ -119,6 +121,7 @@ select {
 	overflow: hidden;
 	color: #6c757d;
 	font-family: inherit;
+	cursor: default;
 }
 
 .password-modal[hidden] {
