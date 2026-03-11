@@ -1,7 +1,8 @@
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const PRESS_DURATION_MS = 170;
+const PRESS_DURATION_MS = 135;
+const POINTER_CLICK_SUPPRESSION_MS = 350;
 
 const statusText = {
 	idle: "Ready",
@@ -19,6 +20,7 @@ const audio = document.querySelector("#soundboard-audio");
 const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
+const lastPointerTriggerAtById = new Map();
 let playbackToken = 0;
 
 function setAnnouncement(message) {
@@ -52,6 +54,8 @@ function pulseButton(button) {
 		window.clearTimeout(existingTimeout);
 	}
 
+	button.classList.remove("pressed");
+	void button.offsetWidth;
 	button.classList.add("pressed");
 
 	const timeout = window.setTimeout(() => {
@@ -60,6 +64,24 @@ function pulseButton(button) {
 	}, PRESS_DURATION_MS);
 
 	pressTimeoutById.set(id, timeout);
+}
+
+function rememberPointerTrigger(id) {
+	if (!id) {
+		return;
+	}
+
+	lastPointerTriggerAtById.set(id, performance.now());
+}
+
+function wasRecentlyTriggeredByPointer(id) {
+	if (!id) {
+		return false;
+	}
+
+	const lastTriggeredAt = lastPointerTriggerAtById.get(id);
+	return typeof lastTriggeredAt === "number" &&
+		performance.now() - lastTriggeredAt <= POINTER_CLICK_SUPPRESSION_MS;
 }
 
 function rememberObjectUrl(id, objectUrl) {
@@ -320,15 +342,38 @@ async function playButton(button) {
 }
 
 buttons.forEach((button) => {
-	button.addEventListener("pointerdown", () => pulseButton(button));
-	button.addEventListener("click", () => {
+	button.addEventListener("pointerdown", () => {
+		const id = button.dataset.id;
+		rememberPointerTrigger(id);
+		void playButton(button);
+	});
+
+	button.addEventListener("click", (event) => {
+		const id = button.dataset.id;
+		if (event.detail !== 0 && wasRecentlyTriggeredByPointer(id)) {
+			return;
+		}
+
 		void playButton(button);
 	});
 });
 
 soundLabels.forEach((label) => {
-	label.addEventListener("click", () => {
+	label.addEventListener("pointerdown", () => {
 		const targetId = label.dataset.soundLabel;
+		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
+		if (button) {
+			rememberPointerTrigger(targetId);
+			void playButton(button);
+		}
+	});
+
+	label.addEventListener("click", (event) => {
+		const targetId = label.dataset.soundLabel;
+		if (event.detail !== 0 && wasRecentlyTriggeredByPointer(targetId)) {
+			return;
+		}
+
 		const button = buttons.find((candidate) => candidate.dataset.id === targetId);
 		if (button) {
 			void playButton(button);
