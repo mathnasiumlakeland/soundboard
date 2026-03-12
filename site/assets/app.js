@@ -868,7 +868,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 		return;
 	}
 
-	const cachedObjectUrlPromise = id === COUNTDOWN_BUTTON_ID ? getCachedObjectUrl(id, sourceUrl) : null;
+	const countdownPlaybackUrlPromise = id === COUNTDOWN_BUTTON_ID && button.dataset.password ? warmSound(button) : null;
 
 	if (id === COUNTDOWN_BUTTON_ID && button.dataset.password) {
 		const countdownCompleted = await startUnlockCountdown(button);
@@ -886,7 +886,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 	}
 
 	const currentToken = ++playbackToken;
-	const cachedObjectUrl = cachedObjectUrlPromise ?? getCachedObjectUrl(id, sourceUrl);
+	const cachedObjectUrl = countdownPlaybackUrlPromise ?? getCachedObjectUrl(id, sourceUrl);
 	const resolvedCachedObjectUrl = await cachedObjectUrl;
 	if (currentToken !== playbackToken) {
 		return;
@@ -922,7 +922,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 	}
 
 	if (id === COUNTDOWN_BUTTON_ID) {
-		if (!resolvedCachedObjectUrl) {
+		if (!resolvedCachedObjectUrl && !countdownPlaybackUrlPromise) {
 			void warmSound(button);
 		}
 
