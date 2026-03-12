@@ -13,6 +13,12 @@ const PRESETS = {
 		{ delay: 40, duration: 40, intensity: 0.9 },
 		{ delay: 40, duration: 50, intensity: 0.6 }
 	],
+	countdown67: [
+		{ duration: 40, intensity: 0.72 },
+		{ delay: 110, duration: 40, intensity: 0.76 },
+		{ delay: 110, duration: 55, intensity: 0.92 },
+		{ delay: 110, duration: 280, intensity: 1 }
+	],
 	buzz: [{ duration: 1000, intensity: 1 }]
 };
 
@@ -332,18 +338,7 @@ export function createHaptics() {
 
 			run();
 		},
-		startSequence(pattern) {
-			if (!Array.isArray(pattern) || pattern.length === 0) {
-				return Promise.resolve();
-			}
-
-			stopLoop();
-			return playPattern(pattern.map((entry) => ({ ...entry })), "sequence");
-		},
 		stopLoop,
-		stopSequence() {
-			clearCurrentPattern("sequence");
-		},
 		cancel() {
 			stopLoop();
 			clearCurrentPattern();

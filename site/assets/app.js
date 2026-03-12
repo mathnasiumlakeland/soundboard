@@ -12,13 +12,6 @@ const PRESS_DURATION_MS = 90;
 const POINTER_CLICK_SUPPRESSION_MS = 400;
 const COUNTDOWN_BUTTON_ID = "67";
 const UNLOCK_COUNTDOWN_STEP_MS = 1000;
-const COUNTDOWN_ERROR_HAPTIC_PATTERN = [
-	{ duration: 40, intensity: 0.7 },
-	{ delay: 40, duration: 40, intensity: 0.7 },
-	{ delay: 40, duration: 40, intensity: 0.9 },
-	{ delay: 40, duration: 50, intensity: 0.6 }
-];
-const COUNTDOWN_BUZZ_DURATION_MS = 30000;
 
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
@@ -54,32 +47,6 @@ let lastPointerActivation = null;
 
 function triggerPressHaptic() {
 	void haptics.trigger("success");
-}
-
-function getHapticPatternDuration(pattern) {
-	return pattern.reduce((total, entry) => total + (entry.delay ?? 0) + entry.duration, 0);
-}
-
-function cloneHapticPattern(pattern, extraDelay = 0) {
-	return pattern.map((entry, index) => ({
-		...entry,
-		delay: (entry.delay ?? 0) + (index === 0 ? extraDelay : 0)
-	}));
-}
-
-function create67CountdownHapticPattern() {
-	const countdownErrorGapMs = Math.max(0, UNLOCK_COUNTDOWN_STEP_MS - getHapticPatternDuration(COUNTDOWN_ERROR_HAPTIC_PATTERN));
-
-	return [
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN),
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
-		{
-			delay: countdownErrorGapMs,
-			duration: COUNTDOWN_BUZZ_DURATION_MS,
-			intensity: 1
-		}
-	];
 }
 
 function isUnlockCountdownVisible() {
@@ -560,7 +527,7 @@ async function startUnlockCountdown(button) {
 
 	activeUnlockCountdown = (async () => {
 		playbackToken += 1;
-		stopCurrentPlayback({ preserveSequence: true });
+		stopCurrentPlayback();
 		document.body.classList.add("is-countdown-active");
 		document.addEventListener("keydown", handleUnlockCountdownKeydown, true);
 
@@ -700,7 +667,7 @@ function requestPassword(button) {
 
 			if (passwordInput.value === expectedPassword) {
 				if (id === COUNTDOWN_BUTTON_ID) {
-					void haptics.startSequence(create67CountdownHapticPattern());
+					void haptics.trigger("countdown67");
 				} else {
 					triggerPressHaptic();
 				}
@@ -753,15 +720,12 @@ function requestPassword(button) {
 	return promise;
 }
 
-function stopCurrentPlayback({ preserveSequence = false } = {}) {
+function stopCurrentPlayback() {
 	if (!audio) {
 		return;
 	}
 
 	haptics.stopLoop();
-	if (!preserveSequence) {
-		haptics.stopSequence();
-	}
 
 	if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
 		resetUnlockCountdownUi();
@@ -838,7 +802,9 @@ async function playButton(button, { shouldPulse = true } = {}) {
 		return;
 	}
 
-	triggerPressHaptic();
+	if (id !== COUNTDOWN_BUTTON_ID) {
+		triggerPressHaptic();
+	}
 
 	const hasAccess = await ensureButtonAccess(button);
 	if (!hasAccess) {
@@ -872,7 +838,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 	const playbackUrl = resolvedCachedObjectUrl ?? sourceUrl;
 
 	try {
-		stopCurrentPlayback({ preserveSequence: id === COUNTDOWN_BUTTON_ID });
+		stopCurrentPlayback();
 		audio.dataset.activeId = id;
 		audio.src = playbackUrl;
 		button.classList.add("is-playing");
@@ -884,7 +850,6 @@ async function playButton(button, { shouldPulse = true } = {}) {
 
 		delete audio.dataset.activeId;
 		if (id === COUNTDOWN_BUTTON_ID) {
-			haptics.stopSequence();
 			resetUnlockCountdownUi();
 		}
 
@@ -989,7 +954,6 @@ updateAllButtonCooldownStates();
 if (audio) {
 	audio.addEventListener("ended", () => {
 		haptics.stopLoop();
-		haptics.stopSequence();
 		buttons.forEach((button) => button.classList.remove("is-playing"));
 		if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
 			resetUnlockCountdownUi();
