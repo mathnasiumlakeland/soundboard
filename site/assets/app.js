@@ -468,6 +468,25 @@ function wait(ms) {
 	});
 }
 
+function hasPreparedAudioSource(sourceUrl) {
+	return Boolean(audio && sourceUrl && audio.getAttribute("src") === sourceUrl);
+}
+
+function prepareAudioElementSource(sourceUrl) {
+	if (!audio || !sourceUrl) {
+		return;
+	}
+
+	audio.preload = "auto";
+
+	if (audio.getAttribute("src") === sourceUrl) {
+		return;
+	}
+
+	audio.src = sourceUrl;
+	audio.load();
+}
+
 function rememberPointerPress(button) {
 	const id = button.dataset.id;
 	if (!id) {
@@ -554,6 +573,7 @@ function showUnlockCountdownFinal(value) {
 
 async function startUnlockCountdown(button) {
 	const label = button.dataset.label ?? "this sound";
+	const sourceUrl = button.dataset.url;
 
 	if (activeUnlockCountdown) {
 		return false;
@@ -562,6 +582,7 @@ async function startUnlockCountdown(button) {
 	activeUnlockCountdown = (async () => {
 		playbackToken += 1;
 		stopCurrentPlayback({ preserveSequence: true });
+		prepareAudioElementSource(sourceUrl);
 		document.body.classList.add("is-countdown-active");
 		document.addEventListener("keydown", handleUnlockCountdownKeydown, true);
 
@@ -777,7 +798,7 @@ function requestPassword(button) {
 	return promise;
 }
 
-function stopCurrentPlayback({ preserveSequence = false } = {}) {
+function stopCurrentPlayback({ preserveSequence = false, preserveSource = false } = {}) {
 	if (!audio) {
 		return;
 	}
@@ -794,8 +815,10 @@ function stopCurrentPlayback({ preserveSequence = false } = {}) {
 	delete audio.dataset.activeId;
 	audio.pause();
 	audio.currentTime = 0;
-	audio.removeAttribute("src");
-	audio.load();
+	if (!preserveSource) {
+		audio.removeAttribute("src");
+		audio.load();
+	}
 	buttons.forEach((button) => button.classList.remove("is-playing"));
 }
 
@@ -869,7 +892,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 		return;
 	}
 
-	const countdownPlaybackUrlPromise = id === COUNTDOWN_BUTTON_ID && button.dataset.password ? warmSound(button) : null;
+	const countdownWarmupPromise = id === COUNTDOWN_BUTTON_ID && button.dataset.password ? warmSound(button) : null;
 
 	if (id === COUNTDOWN_BUTTON_ID && button.dataset.password) {
 		const countdownCompleted = await startUnlockCountdown(button);
@@ -887,18 +910,29 @@ async function playButton(button, { shouldPulse = true } = {}) {
 	}
 
 	const currentToken = ++playbackToken;
-	const cachedObjectUrl = countdownPlaybackUrlPromise ?? getCachedObjectUrl(id, sourceUrl);
-	const resolvedCachedObjectUrl = await cachedObjectUrl;
-	if (currentToken !== playbackToken) {
-		return;
+	const shouldUsePreparedCountdownAudio = id === COUNTDOWN_BUTTON_ID && hasPreparedAudioSource(sourceUrl);
+	let resolvedCachedObjectUrl = null;
+	let playbackUrl = sourceUrl;
+
+	if (!shouldUsePreparedCountdownAudio) {
+		const cachedObjectUrl = countdownWarmupPromise ?? getCachedObjectUrl(id, sourceUrl);
+		resolvedCachedObjectUrl = await cachedObjectUrl;
+		if (currentToken !== playbackToken) {
+			return;
+		}
+
+		playbackUrl = resolvedCachedObjectUrl ?? sourceUrl;
 	}
 
-	const playbackUrl = resolvedCachedObjectUrl ?? sourceUrl;
-
 	try {
-		stopCurrentPlayback({ preserveSequence: id === COUNTDOWN_BUTTON_ID });
+		stopCurrentPlayback({
+			preserveSequence: id === COUNTDOWN_BUTTON_ID,
+			preserveSource: shouldUsePreparedCountdownAudio
+		});
 		audio.dataset.activeId = id;
-		audio.src = playbackUrl;
+		if (!shouldUsePreparedCountdownAudio) {
+			audio.src = playbackUrl;
+		}
 		button.classList.add("is-playing");
 		await audio.play();
 	} catch {
@@ -923,7 +957,7 @@ async function playButton(button, { shouldPulse = true } = {}) {
 	}
 
 	if (id === COUNTDOWN_BUTTON_ID) {
-		if (!resolvedCachedObjectUrl && !countdownPlaybackUrlPromise) {
+		if (!resolvedCachedObjectUrl && !countdownWarmupPromise) {
 			void warmSound(button);
 		}
 
