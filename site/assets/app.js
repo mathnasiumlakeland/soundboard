@@ -717,6 +717,7 @@ function requestPassword(button) {
 			if (passwordInput.value === expectedPassword) {
 				if (id === COUNTDOWN_BUTTON_ID) {
 					isSettling = true;
+					void warmSound(button);
 					showAcceptedPasswordState("Correct. God help us");
 					setAnnouncement("Correct. God help us");
 					feedbackTimeout = window.setTimeout(() => {
