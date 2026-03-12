@@ -263,12 +263,12 @@ select {
 	}
 
 	#instants_container {
-		padding: 0 12px;
+		padding: 0 8px;
 	}
 
 	.instants {
-		grid-template-columns: repeat(2, 94px);
-		gap: 22px 12px;
+		grid-template-columns: repeat(3, 94px);
+		gap: 22px 6px;
 	}
 
 	.instant-link {
