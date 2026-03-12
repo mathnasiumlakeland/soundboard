@@ -20,6 +20,7 @@
   - Renders buttons from `buttonData`.
   - Handles delegated pointer/click activation.
   - Manages audio playback, browser cache warmup, localStorage metadata, password flow, cooldowns, and the `67` countdown.
+  - Preloads the main audio element for the `67` countdown path so playback can start immediately when the overlay reaches `67`, especially on mobile Safari/iPadOS.
   - Owns haptic triggering and lifecycle cleanup.
 - [`site/assets/buttons.js`](/Users/mkieffer/programming/mathnasium/soundboard/site/assets/buttons.js): source of truth for sound buttons.
   - Each entry needs `id`, `label`, `url`, and `color`.
@@ -36,10 +37,12 @@
 - `stopCurrentPlayback()` is the main cleanup point. If a new feature has playback-like lifecycle, wire cleanup there and in the existing `audio ended` and `beforeunload` handlers.
 - The `67` button is special:
   - It is identified by `COUNTDOWN_BUTTON_ID === "67"`.
-  - It requires a password, runs the 3-2-1 countdown overlay, and can trigger looping haptics during playback.
+  - It requires a password, shows a brief success state (`Correct. God, help us`), runs the 3-2-1 countdown overlay, and can trigger looping haptics during playback.
+  - Its countdown path primes the audio element before playback; if you touch this flow, preserve the handoff between password acceptance, countdown, and audio startup.
 - Password modal behavior matters:
   - Button cancel/submit paths are separate from backdrop/Escape dismissal.
   - Incorrect passwords start a cooldown stored in localStorage.
+  - Success and error feedback leave the masked password visible in the input until the modal closes.
 - Audio caching is browser-side only:
   - Cache API stores fetched audio responses.
   - localStorage tracks freshness timestamps and cooldown expirations.
@@ -64,4 +67,5 @@
   - Regular buttons still play audio.
   - Password-protected buttons still respect accept/cancel/error behavior.
   - `67` countdown behavior still blocks background interaction correctly.
+  - `67` starts promptly on mobile/iPad after the overlay reaches `67`, not after an extra buffering pause.
   - Haptics remain best-effort and fail silently on unsupported browsers.

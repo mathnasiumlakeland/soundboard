@@ -31,6 +31,12 @@ export const buttonData = [
 		password: "67"
 	},
 	{
+		id: "21",
+		label: "21",
+		url: "https://www.myinstants.com/media/sounds/21_3.mp3",
+		color: "#7f3cff"
+	},
+	{
 		id: "grunt-birthday-party",
 		label: "Grunt Birthday",
 		url: "https://www.myinstants.com/media/sounds/grunt-birthday-party.mp3",
