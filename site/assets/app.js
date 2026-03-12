@@ -3,7 +3,7 @@ import { buttonData } from "./buttons.js";
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const PRESS_DURATION_MS = 135;
+const PRESS_DURATION_MS = 90;
 
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
