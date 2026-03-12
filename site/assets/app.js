@@ -1,4 +1,5 @@
 import { buttonData } from "./buttons.js";
+import { createHaptics } from "./haptics.js";
 
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
@@ -8,6 +9,8 @@ const PASSWORD_COOLDOWN_MS = 5 * 60 * 1000;
 const PASSWORD_ERROR_DURATION_MS = 450;
 const COOLDOWN_TICK_MS = 250;
 const PRESS_DURATION_MS = 90;
+const COUNTDOWN_BUTTON_ID = "67";
+const UNLOCK_COUNTDOWN_STEP_MS = 1000;
 
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
@@ -18,10 +21,14 @@ const passwordForm = document.querySelector("#password-form");
 const passwordInput = document.querySelector("#password-input");
 const passwordModalTitle = document.querySelector("#password-modal-title");
 const passwordCancelButtons = [...document.querySelectorAll("[data-password-cancel]")];
+const unlockCountdown = document.querySelector("#unlock-countdown");
+const unlockCountdownStage = document.querySelector(".unlock-countdown-stage");
+const unlockCountdownNumber = document.querySelector("#unlock-countdown-number");
 const labelCollator = new Intl.Collator(undefined, {
 	numeric: true,
 	sensitivity: "base"
 });
+const haptics = createHaptics();
 
 const objectUrlById = new Map();
 const warmupById = new Map();
@@ -33,6 +40,15 @@ let cacheMeta = null;
 let pleaseDontModifyMeThx = null;
 let soundCachePromise = null;
 let cooldownIntervalId = null;
+let activeUnlockCountdown = null;
+
+function triggerPressHaptic() {
+	void haptics.trigger("success");
+}
+
+function isUnlockCountdownVisible() {
+	return Boolean(unlockCountdown && !unlockCountdown.hidden);
+}
 
 function createButtonCard(entry) {
 	const article = document.createElement("article");
@@ -409,6 +425,92 @@ function pulseButton(button) {
 	pressTimeoutById.set(id, timeout);
 }
 
+function wait(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
+
+function handleUnlockCountdownKeydown(event) {
+	if (!isUnlockCountdownVisible() || event.metaKey || event.ctrlKey || event.altKey) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopImmediatePropagation();
+}
+
+function resetUnlockCountdownUi() {
+	document.body.classList.remove("is-countdown-active");
+	document.removeEventListener("keydown", handleUnlockCountdownKeydown, true);
+
+	if (unlockCountdown) {
+		unlockCountdown.hidden = true;
+		unlockCountdown.removeAttribute("data-count");
+	}
+
+	if (unlockCountdownStage) {
+		unlockCountdownStage.classList.remove("is-beat");
+	}
+
+	if (unlockCountdownNumber) {
+		unlockCountdownNumber.textContent = "3";
+	}
+}
+
+function showUnlockCountdownStep(count) {
+	if (!unlockCountdown || !unlockCountdownStage || !unlockCountdownNumber) {
+		return;
+	}
+
+	unlockCountdown.hidden = false;
+	unlockCountdown.dataset.count = String(count);
+	unlockCountdownNumber.textContent = String(count);
+	unlockCountdownStage.classList.remove("is-beat");
+	void unlockCountdownStage.offsetWidth;
+	unlockCountdownStage.classList.add("is-beat");
+}
+
+function showUnlockCountdownFinal(value) {
+	if (!unlockCountdown || !unlockCountdownStage || !unlockCountdownNumber) {
+		return;
+	}
+
+	unlockCountdown.hidden = false;
+	unlockCountdown.dataset.count = String(value);
+	unlockCountdownNumber.textContent = String(value);
+	unlockCountdownStage.classList.remove("is-beat");
+}
+
+async function startUnlockCountdown(button) {
+	const label = button.dataset.label ?? "this sound";
+
+	if (activeUnlockCountdown) {
+		return false;
+	}
+
+	activeUnlockCountdown = (async () => {
+		playbackToken += 1;
+		stopCurrentPlayback();
+		document.body.classList.add("is-countdown-active");
+		document.addEventListener("keydown", handleUnlockCountdownKeydown, true);
+
+		for (const count of [3, 2, 1]) {
+			showUnlockCountdownStep(count);
+			setAnnouncement(count === 3 ? `${label} unlocked. 3.` : `${count}.`);
+			void haptics.trigger("error");
+			await wait(UNLOCK_COUNTDOWN_STEP_MS);
+		}
+
+		showUnlockCountdownFinal(label);
+	})().finally(() => {
+		activeUnlockCountdown = null;
+	});
+
+	await activeUnlockCountdown;
+	return true;
+}
+
 function resetPasswordModalState(label) {
 	if (passwordModalTitle) {
 		passwordModalTitle.textContent = `Enter password for ${label} button`;
@@ -475,7 +577,10 @@ async function ensureButtonAccess(button) {
 		return false;
 	}
 
-	setAnnouncement(`Password accepted for ${label}.`);
+	if (id !== COUNTDOWN_BUTTON_ID) {
+		setAnnouncement(`Password accepted for ${label}.`);
+	}
+
 	return true;
 }
 
@@ -525,11 +630,13 @@ function requestPassword(button) {
 			}
 
 			if (passwordInput.value === expectedPassword) {
+				triggerPressHaptic();
 				cleanup("accepted");
 				return;
 			}
 
 			isSettling = true;
+			void haptics.trigger("error");
 			showIncorrectPasswordState();
 			incorrectTimeout = window.setTimeout(() => {
 				cleanup("incorrect");
@@ -542,6 +649,10 @@ function requestPassword(button) {
 
 			if (isSettling) {
 				return;
+			}
+
+			if (event.currentTarget instanceof HTMLButtonElement) {
+				triggerPressHaptic();
 			}
 
 			cleanup("cancelled");
@@ -578,6 +689,13 @@ function stopCurrentPlayback() {
 		return;
 	}
 
+	haptics.stopLoop();
+
+	if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
+		resetUnlockCountdownUi();
+	}
+
+	delete audio.dataset.activeId;
 	audio.pause();
 	audio.currentTime = 0;
 	audio.removeAttribute("src");
@@ -644,33 +762,55 @@ async function playButton(button) {
 	const label = button.dataset.label;
 	const sourceUrl = button.dataset.url;
 
-	if (!audio || !id || !label || !sourceUrl) {
+	if (!audio || !id || !label || !sourceUrl || isUnlockCountdownVisible()) {
 		return;
 	}
+
+	triggerPressHaptic();
 
 	const hasAccess = await ensureButtonAccess(button);
 	if (!hasAccess) {
 		return;
 	}
 
+	const cachedObjectUrlPromise = id === COUNTDOWN_BUTTON_ID ? getCachedObjectUrl(id, sourceUrl) : null;
+
+	if (id === COUNTDOWN_BUTTON_ID && button.dataset.password) {
+		const countdownCompleted = await startUnlockCountdown(button);
+		if (!countdownCompleted) {
+			return;
+		}
+	}
+
+	if (activeUnlockCountdown) {
+		return;
+	}
+
 	pulseButton(button);
 
 	const currentToken = ++playbackToken;
-	const cachedObjectUrl = await getCachedObjectUrl(id, sourceUrl);
+	const cachedObjectUrl = cachedObjectUrlPromise ?? getCachedObjectUrl(id, sourceUrl);
+	const resolvedCachedObjectUrl = await cachedObjectUrl;
 	if (currentToken !== playbackToken) {
 		return;
 	}
 
-	const playbackUrl = cachedObjectUrl ?? sourceUrl;
+	const playbackUrl = resolvedCachedObjectUrl ?? sourceUrl;
 
 	try {
 		stopCurrentPlayback();
+		audio.dataset.activeId = id;
 		audio.src = playbackUrl;
 		button.classList.add("is-playing");
 		await audio.play();
 	} catch {
 		if (currentToken !== playbackToken) {
 			return;
+		}
+
+		delete audio.dataset.activeId;
+		if (id === COUNTDOWN_BUTTON_ID) {
+			resetUnlockCountdownUi();
 		}
 
 		button.classList.remove("is-playing");
@@ -683,7 +823,18 @@ async function playButton(button) {
 		return;
 	}
 
-	if (cachedObjectUrl) {
+	if (id === COUNTDOWN_BUTTON_ID) {
+		haptics.startLoop("buzz");
+
+		if (!resolvedCachedObjectUrl) {
+			void warmSound(button);
+		}
+
+		setAnnouncement(`Playing ${label}.`);
+		return;
+	}
+
+	if (resolvedCachedObjectUrl) {
 		setAnnouncement(`Playing ${label} from local cache.`);
 		return;
 	}
@@ -711,6 +862,12 @@ function bindButtonInteractions() {
 	}
 
 	buttonGrid.addEventListener("pointerdown", (event) => {
+		if (isUnlockCountdownVisible()) {
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+
 		const button = getButtonFromEventTarget(event.target);
 		if (!button) {
 			return;
@@ -724,6 +881,12 @@ function bindButtonInteractions() {
 	});
 
 	buttonGrid.addEventListener("click", (event) => {
+		if (isUnlockCountdownVisible()) {
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+
 		const button = getButtonFromEventTarget(event.target);
 		if (!button) {
 			return;
@@ -743,7 +906,12 @@ updateAllButtonCooldownStates();
 
 if (audio) {
 	audio.addEventListener("ended", () => {
+		haptics.stopLoop();
 		buttons.forEach((button) => button.classList.remove("is-playing"));
+		if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
+			resetUnlockCountdownUi();
+		}
+		delete audio.dataset.activeId;
 	});
 }
 
@@ -757,6 +925,9 @@ window.addEventListener("beforeunload", () => {
 	if (cooldownIntervalId !== null) {
 		window.clearInterval(cooldownIntervalId);
 	}
+
+	resetUnlockCountdownUi();
+	haptics.destroy();
 
 	for (const objectUrl of objectUrlById.values()) {
 		URL.revokeObjectURL(objectUrl);

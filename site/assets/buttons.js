@@ -83,5 +83,11 @@ export const buttonData = [
 		label: "Lock In",
 		url: "https://www.myinstants.com/media/sounds/you-need-to-lock-in.mp3",
 		color: "#ffca2c"
+	},
+	{
+		id: "jeopardy",
+		label: "Jeopardy",
+		url: "https://www.myinstants.com/media/sounds/jeopardy-themelq.mp3",
+		color: "#ffca2c"
 	}
 ];
