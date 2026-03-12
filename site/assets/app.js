@@ -7,6 +7,7 @@ const PLEASE_DONT_MODIFY_ME_THX_KEY = "please-dont-modify-me-thx";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_COOLDOWN_MS = 5 * 60 * 1000;
 const PASSWORD_ERROR_DURATION_MS = 450;
+const PASSWORD_SUCCESS_DURATION_MS = 900;
 const COOLDOWN_TICK_MS = 250;
 const PRESS_DURATION_MS = 90;
 const POINTER_CLICK_SUPPRESSION_MS = 400;
@@ -603,7 +604,6 @@ function showIncorrectPasswordState() {
 	}
 
 	if (passwordInput) {
-		passwordInput.value = "";
 		passwordInput.disabled = true;
 		passwordInput.classList.add("is-error");
 	}
@@ -612,6 +612,22 @@ function showIncorrectPasswordState() {
 		passwordModalPanel.classList.remove("is-shaking");
 		void passwordModalPanel.offsetWidth;
 		passwordModalPanel.classList.add("is-shaking");
+	}
+}
+
+function showAcceptedPasswordState(message) {
+	if (passwordModalTitle) {
+		passwordModalTitle.textContent = message;
+		passwordModalTitle.classList.remove("is-error");
+	}
+
+	if (passwordInput) {
+		passwordInput.disabled = true;
+		passwordInput.classList.remove("is-error");
+	}
+
+	if (passwordModalPanel) {
+		passwordModalPanel.classList.remove("is-shaking");
 	}
 }
 
@@ -671,12 +687,12 @@ function requestPassword(button) {
 
 	const promise = new Promise((resolve) => {
 		activePasswordRequest = { resolve, promise: null };
-		let incorrectTimeout = 0;
+		let feedbackTimeout = 0;
 		let isSettling = false;
 
 		const cleanup = (value) => {
-			if (incorrectTimeout) {
-				window.clearTimeout(incorrectTimeout);
+			if (feedbackTimeout) {
+				window.clearTimeout(feedbackTimeout);
 			}
 
 			passwordModal.hidden = true;
@@ -700,10 +716,17 @@ function requestPassword(button) {
 
 			if (passwordInput.value === expectedPassword) {
 				if (id === COUNTDOWN_BUTTON_ID) {
-					void haptics.startSequence(create67CountdownHapticPattern());
-				} else {
-					triggerPressHaptic();
+					isSettling = true;
+					showAcceptedPasswordState("Correct. God help us");
+					setAnnouncement("Correct. God help us");
+					feedbackTimeout = window.setTimeout(() => {
+						void haptics.startSequence(create67CountdownHapticPattern());
+						cleanup("accepted");
+					}, PASSWORD_SUCCESS_DURATION_MS);
+					return;
 				}
+
+				triggerPressHaptic();
 				cleanup("accepted");
 				return;
 			}
@@ -711,7 +734,7 @@ function requestPassword(button) {
 			isSettling = true;
 			void haptics.trigger("error");
 			showIncorrectPasswordState();
-			incorrectTimeout = window.setTimeout(() => {
+			feedbackTimeout = window.setTimeout(() => {
 				cleanup("incorrect");
 			}, PASSWORD_ERROR_DURATION_MS);
 		};
