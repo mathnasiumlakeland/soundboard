@@ -9,6 +9,7 @@ const PASSWORD_COOLDOWN_MS = 5 * 60 * 1000;
 const PASSWORD_ERROR_DURATION_MS = 450;
 const COOLDOWN_TICK_MS = 250;
 const PRESS_DURATION_MS = 90;
+const POINTER_CLICK_SUPPRESSION_MS = 400;
 const COUNTDOWN_BUTTON_ID = "67";
 const UNLOCK_COUNTDOWN_STEP_MS = 1000;
 const COUNTDOWN_ERROR_HAPTIC_PATTERN = [
@@ -48,6 +49,8 @@ let pleaseDontModifyMeThx = null;
 let soundCachePromise = null;
 let cooldownIntervalId = null;
 let activeUnlockCountdown = null;
+let lastPointerPress = null;
+let lastPointerActivation = null;
 
 function triggerPressHaptic() {
 	void haptics.trigger("success");
@@ -464,6 +467,39 @@ function wait(ms) {
 	});
 }
 
+function rememberPointerPress(button) {
+	const id = button.dataset.id;
+	if (!id) {
+		return;
+	}
+
+	lastPointerPress = {
+		buttonId: id,
+		timestamp: Date.now()
+	};
+}
+
+function rememberPointerActivation(button) {
+	const id = button.dataset.id;
+	if (!id) {
+		return;
+	}
+
+	lastPointerActivation = {
+		buttonId: id,
+		timestamp: Date.now()
+	};
+}
+
+function hasRecentPointerRecord(button, record) {
+	const id = button.dataset.id;
+	if (!id || !record || record.buttonId !== id) {
+		return false;
+	}
+
+	return Date.now() - record.timestamp <= POINTER_CLICK_SUPPRESSION_MS;
+}
+
 function handleUnlockCountdownKeydown(event) {
 	if (!isUnlockCountdownVisible() || event.metaKey || event.ctrlKey || event.altKey) {
 		return;
@@ -793,7 +829,7 @@ async function warmSound(button) {
 	return warmup;
 }
 
-async function playButton(button) {
+async function playButton(button, { shouldPulse = true } = {}) {
 	const id = button.dataset.id;
 	const label = button.dataset.label;
 	const sourceUrl = button.dataset.url;
@@ -822,7 +858,9 @@ async function playButton(button) {
 		return;
 	}
 
-	pulseButton(button);
+	if (shouldPulse) {
+		pulseButton(button);
+	}
 
 	const currentToken = ++playbackToken;
 	const cachedObjectUrl = cachedObjectUrlPromise ?? getCachedObjectUrl(id, sourceUrl);
@@ -897,10 +935,6 @@ function bindButtonInteractions() {
 	}
 
 	buttonGrid.addEventListener("pointerdown", (event) => {
-		if (haptics.requiresClickGesture) {
-			return;
-		}
-
 		if (isUnlockCountdownVisible()) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -912,11 +946,18 @@ function bindButtonInteractions() {
 			return;
 		}
 
+		rememberPointerPress(button);
+
+		if (haptics.requiresClickGesture) {
+			return;
+		}
+
 		if (button.dataset.password) {
 			return;
 		}
 
-		void playButton(button);
+		rememberPointerActivation(button);
+		void playButton(button, { shouldPulse: false });
 	});
 
 	buttonGrid.addEventListener("click", (event) => {
@@ -931,11 +972,13 @@ function bindButtonInteractions() {
 			return;
 		}
 
-		if (!button.dataset.password && event.detail !== 0 && !haptics.requiresClickGesture) {
+		if (hasRecentPointerRecord(button, lastPointerActivation)) {
 			return;
 		}
 
-		void playButton(button);
+		void playButton(button, {
+			shouldPulse: !hasRecentPointerRecord(button, lastPointerPress)
+		});
 	});
 }
 
