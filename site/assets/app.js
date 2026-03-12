@@ -13,13 +13,8 @@ const PRESS_DURATION_MS = 90;
 const POINTER_CLICK_SUPPRESSION_MS = 400;
 const COUNTDOWN_BUTTON_ID = "67";
 const UNLOCK_COUNTDOWN_STEP_MS = 1000;
-const COUNTDOWN_ERROR_HAPTIC_PATTERN = [
-	{ duration: 40, intensity: 0.7 },
-	{ delay: 40, duration: 40, intensity: 0.7 },
-	{ delay: 40, duration: 40, intensity: 0.9 },
-	{ delay: 40, duration: 50, intensity: 0.6 }
-];
-const COUNTDOWN_BUZZ_DURATION_MS = 30000;
+const COUNTDOWN_STEP_HAPTIC_PATTERN = [{ duration: 40, intensity: 1 }];
+const COUNTDOWN_FINAL_HAPTIC_PATTERN = [{ duration: 120, intensity: 1 }];
 
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
@@ -55,32 +50,6 @@ let lastPointerActivation = null;
 
 function triggerPressHaptic() {
 	void haptics.trigger("success");
-}
-
-function getHapticPatternDuration(pattern) {
-	return pattern.reduce((total, entry) => total + (entry.delay ?? 0) + entry.duration, 0);
-}
-
-function cloneHapticPattern(pattern, extraDelay = 0) {
-	return pattern.map((entry, index) => ({
-		...entry,
-		delay: (entry.delay ?? 0) + (index === 0 ? extraDelay : 0)
-	}));
-}
-
-function create67CountdownHapticPattern() {
-	const countdownErrorGapMs = Math.max(0, UNLOCK_COUNTDOWN_STEP_MS - getHapticPatternDuration(COUNTDOWN_ERROR_HAPTIC_PATTERN));
-
-	return [
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN),
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
-		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
-		{
-			delay: countdownErrorGapMs,
-			duration: COUNTDOWN_BUZZ_DURATION_MS,
-			intensity: 1
-		}
-	];
 }
 
 function isUnlockCountdownVisible() {
@@ -588,11 +557,13 @@ async function startUnlockCountdown(button) {
 
 		for (const count of [3, 2, 1]) {
 			showUnlockCountdownStep(count);
+			void haptics.startSequence(COUNTDOWN_STEP_HAPTIC_PATTERN);
 			setAnnouncement(count === 3 ? `${label} unlocked. 3.` : `${count}.`);
 			await wait(UNLOCK_COUNTDOWN_STEP_MS);
 		}
 
 		showUnlockCountdownFinal(label);
+		void haptics.startSequence(COUNTDOWN_FINAL_HAPTIC_PATTERN);
 	})().finally(() => {
 		activeUnlockCountdown = null;
 	});
@@ -742,7 +713,6 @@ function requestPassword(button) {
 					showAcceptedPasswordState("Correct. God help us");
 					setAnnouncement("Correct. God help us");
 					feedbackTimeout = window.setTimeout(() => {
-						void haptics.startSequence(create67CountdownHapticPattern());
 						cleanup("accepted");
 					}, PASSWORD_SUCCESS_DURATION_MS);
 					return;

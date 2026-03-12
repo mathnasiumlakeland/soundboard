@@ -1,6 +1,7 @@
 const DEFAULT_INTENSITY = 0.5;
 const TOGGLE_MIN_MS = 16;
 const TOGGLE_MAX_MS = 184;
+const MAX_PHASE_DURATION_MS = 1000;
 
 const PRESETS = {
 	success: [
@@ -97,6 +98,13 @@ function toVibrationPattern(pattern) {
 	}
 
 	return segments;
+}
+
+function normalizePattern(pattern) {
+	return pattern.map((entry) => ({
+		...entry,
+		duration: Math.max(0, Math.min(MAX_PHASE_DURATION_MS, Number.isFinite(entry.duration) ? entry.duration : 0))
+	}));
 }
 
 export function createHaptics() {
@@ -265,13 +273,15 @@ export function createHaptics() {
 			return Promise.resolve();
 		}
 
+		const normalizedPattern = normalizePattern(pattern);
+
 		clearCurrentPattern();
 		currentPatternOwner = owner;
 		const patternId = currentPatternId;
-		const duration = getPatternDuration(pattern);
+		const duration = getPatternDuration(normalizedPattern);
 
 		if (supportsVibration) {
-			navigator.vibrate(toVibrationPattern(pattern));
+			navigator.vibrate(toVibrationPattern(normalizedPattern));
 
 			if (duration > 0) {
 				vibrationResetTimeoutId = window.setTimeout(() => {
@@ -285,7 +295,7 @@ export function createHaptics() {
 			return Promise.resolve();
 		}
 
-		return runFallbackPattern(pattern, owner);
+		return runFallbackPattern(normalizedPattern, owner);
 	}
 
 	function stopLoop() {
