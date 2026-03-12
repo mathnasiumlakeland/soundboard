@@ -5,14 +5,6 @@ const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const PRESS_DURATION_MS = 135;
 
-const statusText = {
-	idle: "Ready",
-	loading: "Caching...",
-	cached: "Cached locally",
-	streamed: "Streaming source",
-	error: "Playback error"
-};
-
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
 const audio = document.querySelector("#soundboard-audio");
@@ -32,6 +24,8 @@ const pressTimeoutById = new Map();
 let buttons = [];
 let playbackToken = 0;
 let activePasswordRequest = null;
+let cacheMeta = null;
+let soundCachePromise = null;
 
 function createButtonCard(entry) {
 	const article = document.createElement("article");
@@ -88,18 +82,138 @@ function setAnnouncement(message) {
 	}
 }
 
-function getStatusElement(id) {
-	return document.querySelector(`#${CSS.escape(id)}-status`);
+function getCacheMeta() {
+	if (cacheMeta) {
+		return cacheMeta;
+	}
+
+	try {
+		cacheMeta = JSON.parse(window.localStorage.getItem(CACHE_META_KEY) ?? "{}");
+	} catch {
+		cacheMeta = {};
+	}
+
+	return cacheMeta;
 }
 
-function setStatus(id, status) {
-	const statusElement = getStatusElement(id);
-	if (!statusElement) {
+function persistCacheMeta() {
+	try {
+		window.localStorage.setItem(CACHE_META_KEY, JSON.stringify(getCacheMeta()));
+	} catch {
+		// Ignore storage failures and fall back to uncapped browser behavior.
+	}
+}
+
+function rememberCacheTimestamp(sourceUrl) {
+	const meta = getCacheMeta();
+	meta[sourceUrl] = Date.now();
+	persistCacheMeta();
+}
+
+function forgetCacheTimestamp(sourceUrl) {
+	const meta = getCacheMeta();
+	if (!(sourceUrl in meta)) {
 		return;
 	}
 
-	statusElement.textContent = statusText[status];
-	statusElement.className = `status-pill status-${status}`;
+	delete meta[sourceUrl];
+	persistCacheMeta();
+}
+
+function getCachedAt(sourceUrl) {
+	const cachedAt = getCacheMeta()[sourceUrl];
+	return typeof cachedAt === "number" ? cachedAt : 0;
+}
+
+function isCacheFresh(sourceUrl) {
+	const cachedAt = getCachedAt(sourceUrl);
+	return cachedAt > 0 && Date.now() - cachedAt <= CACHE_TTL_MS;
+}
+
+function getSoundCache() {
+	if (!("caches" in window)) {
+		return null;
+	}
+
+	soundCachePromise ??= caches.open(SOUND_CACHE_NAME);
+	return soundCachePromise;
+}
+
+function rememberObjectUrl(id, objectUrl) {
+	const existingObjectUrl = objectUrlById.get(id);
+	if (existingObjectUrl) {
+		URL.revokeObjectURL(existingObjectUrl);
+	}
+
+	objectUrlById.set(id, objectUrl);
+}
+
+function forgetObjectUrl(id) {
+	const existingObjectUrl = objectUrlById.get(id);
+	if (!existingObjectUrl) {
+		return;
+	}
+
+	URL.revokeObjectURL(existingObjectUrl);
+	objectUrlById.delete(id);
+}
+
+async function purgeExpiredCacheEntry(id, sourceUrl) {
+	forgetObjectUrl(id);
+	forgetCacheTimestamp(sourceUrl);
+
+	const cache = getSoundCache();
+	if (!cache) {
+		return;
+	}
+
+	try {
+		await (await cache).delete(sourceUrl);
+	} catch {
+		// Ignore cache cleanup failures.
+	}
+}
+
+async function getCachedObjectUrl(id, sourceUrl) {
+	const existingObjectUrl = objectUrlById.get(id);
+	if (existingObjectUrl) {
+		if (isCacheFresh(sourceUrl)) {
+			return existingObjectUrl;
+		}
+
+		await purgeExpiredCacheEntry(id, sourceUrl);
+	}
+
+	if (!isCacheFresh(sourceUrl)) {
+		await purgeExpiredCacheEntry(id, sourceUrl);
+		return null;
+	}
+
+	const cache = getSoundCache();
+	if (!cache) {
+		forgetCacheTimestamp(sourceUrl);
+		return null;
+	}
+
+	try {
+		const cachedResponse = await (await cache).match(sourceUrl);
+		if (!cachedResponse || cachedResponse.type === "opaque") {
+			forgetCacheTimestamp(sourceUrl);
+			return null;
+		}
+
+		const blob = await cachedResponse.blob();
+		if (!blob.size) {
+			await purgeExpiredCacheEntry(id, sourceUrl);
+			return null;
+		}
+
+		const objectUrl = URL.createObjectURL(blob);
+		rememberObjectUrl(id, objectUrl);
+		return objectUrl;
+	} catch {
+		return null;
+	}
 }
 
 function pulseButton(button) {
@@ -210,82 +324,6 @@ function requestPassword(label) {
 	return promise;
 }
 
-function rememberObjectUrl(id, objectUrl) {
-	const existingObjectUrl = objectUrlById.get(id);
-	if (existingObjectUrl) {
-		URL.revokeObjectURL(existingObjectUrl);
-	}
-
-	objectUrlById.set(id, objectUrl);
-}
-
-function forgetObjectUrl(id) {
-	const existingObjectUrl = objectUrlById.get(id);
-	if (!existingObjectUrl) {
-		return;
-	}
-
-	URL.revokeObjectURL(existingObjectUrl);
-	objectUrlById.delete(id);
-}
-
-function readCacheMeta() {
-	try {
-		return JSON.parse(window.localStorage.getItem(CACHE_META_KEY) ?? "{}");
-	} catch {
-		return {};
-	}
-}
-
-function writeCacheMeta(meta) {
-	try {
-		window.localStorage.setItem(CACHE_META_KEY, JSON.stringify(meta));
-	} catch {
-		// Ignore storage failures and fall back to uncapped browser behavior.
-	}
-}
-
-function getCachedAt(sourceUrl) {
-	const meta = readCacheMeta();
-	const cachedAt = meta[sourceUrl];
-	return typeof cachedAt === "number" ? cachedAt : 0;
-}
-
-function rememberCacheTimestamp(sourceUrl) {
-	const meta = readCacheMeta();
-	meta[sourceUrl] = Date.now();
-	writeCacheMeta(meta);
-}
-
-function forgetCacheTimestamp(sourceUrl) {
-	const meta = readCacheMeta();
-	if (!(sourceUrl in meta)) {
-		return;
-	}
-
-	delete meta[sourceUrl];
-	writeCacheMeta(meta);
-}
-
-function isCacheFresh(sourceUrl) {
-	const cachedAt = getCachedAt(sourceUrl);
-	return cachedAt > 0 && Date.now() - cachedAt <= CACHE_TTL_MS;
-}
-
-async function purgeExpiredCacheEntry(id, sourceUrl) {
-	forgetObjectUrl(id);
-	forgetCacheTimestamp(sourceUrl);
-
-	if ("caches" in window) {
-		try {
-			const cache = await caches.open(SOUND_CACHE_NAME);
-			await cache.delete(sourceUrl);
-		} catch {
-			// Ignore cache cleanup failures.
-		}
-	}
-}
-
 function stopCurrentPlayback() {
 	if (!audio) {
 		return;
@@ -298,62 +336,17 @@ function stopCurrentPlayback() {
 	buttons.forEach((button) => button.classList.remove("is-playing"));
 }
 
-async function restoreCachedSounds() {
-	if (!("caches" in window)) {
-		return;
-	}
-
-	try {
-		const cache = await caches.open(SOUND_CACHE_NAME);
-
-		await Promise.all(
-			buttons.map(async (button) => {
-				const id = button.dataset.id;
-				const sourceUrl = button.dataset.url;
-
-				if (!id || !sourceUrl || objectUrlById.has(id)) {
-					return;
-				}
-
-				if (!isCacheFresh(sourceUrl)) {
-					await purgeExpiredCacheEntry(id, sourceUrl);
-					return;
-				}
-
-				const cachedResponse = await cache.match(sourceUrl);
-				if (!cachedResponse || cachedResponse.type === "opaque") {
-					return;
-				}
-
-				const blob = await cachedResponse.blob();
-				if (!blob.size) {
-					return;
-				}
-
-				rememberObjectUrl(id, URL.createObjectURL(blob));
-				setStatus(id, "cached");
-			})
-		);
-	} catch {
-		// Keep direct playback available if cache hydration fails.
-	}
-}
-
 async function warmSound(button) {
 	const id = button.dataset.id;
 	const sourceUrl = button.dataset.url;
 
 	if (!id || !sourceUrl) {
-		return;
+		return null;
 	}
 
-	if (objectUrlById.has(id) && isCacheFresh(sourceUrl)) {
-		setStatus(id, "cached");
-		return;
-	}
-
-	if (objectUrlById.has(id) && !isCacheFresh(sourceUrl)) {
-		await purgeExpiredCacheEntry(id, sourceUrl);
+	const cachedObjectUrl = await getCachedObjectUrl(id, sourceUrl);
+	if (cachedObjectUrl) {
+		return cachedObjectUrl;
 	}
 
 	const inFlightWarmup = warmupById.get(id);
@@ -363,34 +356,18 @@ async function warmSound(button) {
 
 	const warmup = (async () => {
 		try {
-			if ("caches" in window) {
-				const cache = await caches.open(SOUND_CACHE_NAME);
-				const cachedResponse = await cache.match(sourceUrl);
-
-				if (cachedResponse && !isCacheFresh(sourceUrl)) {
-					await purgeExpiredCacheEntry(id, sourceUrl);
-				}
-
-				if (cachedResponse && cachedResponse.type !== "opaque" && isCacheFresh(sourceUrl)) {
-					const cachedBlob = await cachedResponse.blob();
-					if (cachedBlob.size) {
-						rememberObjectUrl(id, URL.createObjectURL(cachedBlob));
-						setStatus(id, "cached");
-						return;
-					}
-				}
-			}
-
-			setStatus(id, "loading");
-
 			const response = await fetch(sourceUrl, { mode: "cors" });
 			if (!response.ok) {
 				throw new Error(`Unexpected response ${response.status}`);
 			}
 
-			if ("caches" in window) {
-				const cache = await caches.open(SOUND_CACHE_NAME);
-				await cache.put(sourceUrl, response.clone());
+			const cache = getSoundCache();
+			if (cache) {
+				try {
+					await (await cache).put(sourceUrl, response.clone());
+				} catch {
+					// Keep current-session replay fast even if persistent cache writes fail.
+				}
 			}
 
 			const blob = await response.blob();
@@ -398,13 +375,12 @@ async function warmSound(button) {
 				throw new Error("Received an empty audio file.");
 			}
 
-			rememberObjectUrl(id, URL.createObjectURL(blob));
+			const objectUrl = URL.createObjectURL(blob);
+			rememberObjectUrl(id, objectUrl);
 			rememberCacheTimestamp(sourceUrl);
-			setStatus(id, "cached");
+			return objectUrl;
 		} catch {
-			if (!objectUrlById.has(id)) {
-				setStatus(id, "streamed");
-			}
+			return null;
 		} finally {
 			warmupById.delete(id);
 		}
@@ -430,12 +406,13 @@ async function playButton(button) {
 
 	pulseButton(button);
 
-	if (!isCacheFresh(sourceUrl)) {
-		await purgeExpiredCacheEntry(id, sourceUrl);
+	const currentToken = ++playbackToken;
+	const cachedObjectUrl = await getCachedObjectUrl(id, sourceUrl);
+	if (currentToken !== playbackToken) {
+		return;
 	}
 
-	const playbackUrl = objectUrlById.get(id) ?? sourceUrl;
-	const currentToken = ++playbackToken;
+	const playbackUrl = cachedObjectUrl ?? sourceUrl;
 
 	try {
 		stopCurrentPlayback();
@@ -448,7 +425,6 @@ async function playButton(button) {
 		}
 
 		button.classList.remove("is-playing");
-		setStatus(id, "error");
 		setAnnouncement(`Playback for ${label} was blocked. Click the button again.`);
 		return;
 	}
@@ -458,33 +434,53 @@ async function playButton(button) {
 		return;
 	}
 
-	if (objectUrlById.has(id)) {
-		setStatus(id, "cached");
+	if (cachedObjectUrl) {
 		setAnnouncement(`Playing ${label} from local cache.`);
 		return;
 	}
 
 	setAnnouncement(`Playing ${label}. Warming a browser cache in the background.`);
-	void warmSound(button).then(() => {
-		if (objectUrlById.has(id)) {
+	void warmSound(button).then((objectUrl) => {
+		if (objectUrl) {
 			setAnnouncement(`${label} is cached locally for faster replays.`);
 		}
 	});
 }
 
+function getButtonFromEventTarget(target) {
+	if (!(target instanceof Element)) {
+		return null;
+	}
+
+	const button = target.closest("[data-sound]");
+	return button instanceof HTMLButtonElement ? button : null;
+}
+
 function bindButtonInteractions() {
-	buttons.forEach((button) => {
-		button.addEventListener("pointerdown", () => {
-			void playButton(button);
-		});
+	if (!buttonGrid) {
+		return;
+	}
 
-		button.addEventListener("click", (event) => {
-			if (event.detail !== 0) {
-				return;
-			}
+	buttonGrid.addEventListener("pointerdown", (event) => {
+		const button = getButtonFromEventTarget(event.target);
+		if (!button) {
+			return;
+		}
 
-			void playButton(button);
-		});
+		void playButton(button);
+	});
+
+	buttonGrid.addEventListener("click", (event) => {
+		if (event.detail !== 0) {
+			return;
+		}
+
+		const button = getButtonFromEventTarget(event.target);
+		if (!button) {
+			return;
+		}
+
+		void playButton(button);
 	});
 }
 
@@ -508,5 +504,3 @@ window.addEventListener("beforeunload", () => {
 		URL.revokeObjectURL(objectUrl);
 	}
 });
-
-void restoreCachedSounds();

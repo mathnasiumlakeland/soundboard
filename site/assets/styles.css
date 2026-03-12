@@ -1,6 +1,14 @@
+@font-face {
+	font-family: "Ldf Comic Sans Bold";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/qdbetter-comic-sans-medium.ttf") format("truetype");
+}
+
 :root {
 	color-scheme: light;
-	font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Chalkboard", sans-serif;
+	font-family: "Ldf Comic Sans Bold", "Comic Sans MS", "Chalkboard SE", "Chalkboard", sans-serif;
 }
 
 * {
@@ -69,8 +77,7 @@ select {
 	width: 94px;
 	height: 89px;
 	display: block;
-	background: url("https://www.myinstants.com/media/images/transparent_button_small_sprite.png")
-		no-repeat;
+	background: url("./button-sprite-small.png") no-repeat;
 	background-position: -5px -5px;
 	border: none;
 	cursor: pointer;
@@ -101,8 +108,7 @@ select {
 	width: 94px;
 	height: 89px;
 	margin-bottom: 5px;
-	background: url("https://www.myinstants.com/media/images/transparent_button_small_shadow.png")
-		no-repeat;
+	background: url("./button-shadow-small.png") no-repeat;
 }
 
 .circle {
