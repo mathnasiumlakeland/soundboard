@@ -3,7 +3,7 @@ export const buttonData = [
 		id: "vine-boom",
 		label: "Vine Boom",
 		url: "https://www.myinstants.com/media/sounds/vine-boom.mp3",
-		color: "#ff0000"
+		color: "#5c5c5c"
 	},
 	{
 		id: "correct",
@@ -40,7 +40,7 @@ export const buttonData = [
 		id: "incorrect",
 		label: "Incorrect",
 		url: "https://www.myinstants.com/media/sounds/wrong-answer-sound-effect.mp3",
-		color: "#5c5c5c"
+		color: "#ff0000"
 	},
 	{
 		id: "womp-womp-womp",
@@ -57,14 +57,14 @@ export const buttonData = [
 	{
 		id: "laugh-track",
 		label: "Laugh Track",
-		url: "https://www.myinstants.com/media/sounds/sitcom-laughing-1.mp3",
+		url: "https://www.myinstants.com/media/sounds/sitcom-laughing-track.mp3",
 		color: "#e1e48f"
 	},
 	{
 		id: "applause",
 		label: "Applause",
-		url: "https://www.myinstants.com/media/sounds/aplausos_2.mp3",
-		color: "#6f97f8"
+		url: "https://www.myinstants.com/media/sounds/small_crowd_applause-yannick_lemieux-1268806408.mp3",
+		color: "#ff4f8b"
 	},
 	{
 		id: "yay",
