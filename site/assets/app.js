@@ -12,7 +12,7 @@ const COOLDOWN_TICK_MS = 250;
 const PRESS_DURATION_MS = 90;
 const POINTER_CLICK_SUPPRESSION_MS = 400;
 const COUNTDOWN_BUTTON_ID = "67";
-const UNLOCK_COUNTDOWN_STEP_MS = 1000;
+const UNLOCK_COUNTDOWN_STEP_MS = 1750;
 const COUNTDOWN_STEP_HAPTIC_PATTERN = [{ duration: 40, intensity: 1 }];
 const COUNTDOWN_FINAL_HAPTIC_PATTERN = [{ duration: 120, intensity: 1 }];
 
@@ -855,7 +855,9 @@ async function playButton(button, { shouldPulse = true } = {}) {
 		return;
 	}
 
-	triggerPressHaptic();
+	if (id !== COUNTDOWN_BUTTON_ID) {
+		triggerPressHaptic();
+	}
 
 	const hasAccess = await ensureButtonAccess(button);
 	if (!hasAccess) {
