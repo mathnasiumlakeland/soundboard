@@ -202,10 +202,15 @@ export function createHaptics() {
 		}
 
 		return new Promise((resolve) => {
-			let startTime = 0;
+			let startTime = window.performance.now();
 			let lastToggleTime = -1;
 
 			fallbackResolve = resolve;
+
+			if ((pattern[0]?.delay ?? 0) === 0) {
+				fallbackLabel.click();
+				lastToggleTime = startTime;
+			}
 
 			const step = (timestamp) => {
 				if (patternId !== currentPatternId || currentPatternOwner !== owner) {
@@ -215,10 +220,6 @@ export function createHaptics() {
 					}
 					resolve();
 					return;
-				}
-
-				if (startTime === 0) {
-					startTime = timestamp;
 				}
 
 				const elapsed = timestamp - startTime;
@@ -299,6 +300,7 @@ export function createHaptics() {
 	}
 
 	return {
+		requiresClickGesture: !supportsVibration,
 		trigger(name) {
 			const pattern = clonePattern(name);
 			if (!pattern) {

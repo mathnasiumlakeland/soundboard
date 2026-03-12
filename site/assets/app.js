@@ -862,6 +862,10 @@ function bindButtonInteractions() {
 	}
 
 	buttonGrid.addEventListener("pointerdown", (event) => {
+		if (haptics.requiresClickGesture) {
+			return;
+		}
+
 		if (isUnlockCountdownVisible()) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -892,7 +896,7 @@ function bindButtonInteractions() {
 			return;
 		}
 
-		if (!button.dataset.password && event.detail !== 0) {
+		if (!button.dataset.password && event.detail !== 0 && !haptics.requiresClickGesture) {
 			return;
 		}
 
