@@ -37,6 +37,24 @@ export const buttonData = [
 		color: "#7f3cff"
 	},
 	{
+		id: "duolingo-correct",
+		label: "Duolingo Correct",
+		url: "https://www.myinstants.com/media/sounds/duolingo-correct.mp3",
+		color: "#7ed957"
+	},
+	{
+		id: "duolingo-complete",
+		label: "Duolingo Complete",
+		url: "https://www.myinstants.com/media/sounds/duolingo-completed-lesson.mp3",
+		color: "#4d8dff"
+	},
+	{
+		id: "duolingo-incorrect",
+		label: "Duolingo Incorrect",
+		url: "https://www.myinstants.com/media/sounds/duolingo-wrong.mp3",
+		color: "#ff5f56"
+	},
+	{
 		id: "grunt-birthday-party",
 		label: "Grunt Birthday",
 		url: "https://www.myinstants.com/media/sounds/grunt-birthday-party.mp3",
