@@ -77,5 +77,11 @@ export const buttonData = [
 		label: "Huh",
 		url: "https://www.myinstants.com/media/sounds/ceeday-huh-sound-effect.mp3",
 		color: "#5fd7ff"
+	},
+	{
+		id: "lock-in",
+		label: "Lock In",
+		url: "https://www.myinstants.com/media/sounds/you-need-to-lock-in.mp3",
+		color: "#ffca2c"
 	}
 ];

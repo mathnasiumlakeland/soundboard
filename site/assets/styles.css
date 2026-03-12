@@ -86,6 +86,10 @@ select {
 	-webkit-tap-highlight-color: transparent;
 }
 
+.small-button:disabled {
+	cursor: not-allowed;
+}
+
 .small-button:focus {
 	outline: none;
 	background-position: -5px -5px;
@@ -109,6 +113,40 @@ select {
 	height: 89px;
 	margin-bottom: 5px;
 	background: url("./button-shadow-small.png") no-repeat;
+}
+
+.button-cooldown-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 2;
+	width: 94px;
+	height: 89px;
+	display: grid;
+	place-items: center;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.58);
+	color: #2d3136;
+	font-size: 18px;
+	line-height: 1;
+	letter-spacing: 0.03em;
+	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+	backdrop-filter: blur(1.5px);
+	pointer-events: none;
+}
+
+.button-cooldown-overlay[hidden] {
+	display: none;
+}
+
+.button-cooldown-timer {
+	font-variant-numeric: tabular-nums;
+}
+
+.instant.is-locked .small-button,
+.instant.is-locked .small-button-background,
+.instant.is-locked .small-button-shadow {
+	filter: grayscale(1) brightness(0.78);
 }
 
 .circle {
@@ -159,6 +197,10 @@ select {
 	box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
 }
 
+.password-modal-panel.is-shaking {
+	animation: password-shake 0.42s ease;
+}
+
 .password-form {
 	display: grid;
 	gap: 12px;
@@ -172,6 +214,10 @@ select {
 	color: #212529;
 }
 
+.password-modal-title.is-error {
+	color: #b42318;
+}
+
 .password-input {
 	width: 100%;
 	border: 1px solid #c4c4c4;
@@ -181,6 +227,11 @@ select {
 	line-height: 1.2;
 	background: #ffffff;
 	color: #212529;
+}
+
+.password-input.is-error {
+	border-color: #d92d20;
+	background: #fff1f1;
 }
 
 .password-actions {
@@ -249,6 +300,29 @@ select {
 	margin-top: 1rem;
 	color: #6c757d;
 	text-decoration: underline;
+}
+
+@keyframes password-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+
+	20% {
+		transform: translateX(-8px);
+	}
+
+	40% {
+		transform: translateX(8px);
+	}
+
+	60% {
+		transform: translateX(-6px);
+	}
+
+	80% {
+		transform: translateX(6px);
+	}
 }
 
 @media only screen and (min-width: 768px) {
