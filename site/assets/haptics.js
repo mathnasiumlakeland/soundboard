@@ -332,7 +332,18 @@ export function createHaptics() {
 
 			run();
 		},
+		startSequence(pattern) {
+			if (!Array.isArray(pattern) || pattern.length === 0) {
+				return Promise.resolve();
+			}
+
+			stopLoop();
+			return playPattern(pattern.map((entry) => ({ ...entry })), "sequence");
+		},
 		stopLoop,
+		stopSequence() {
+			clearCurrentPattern("sequence");
+		},
 		cancel() {
 			stopLoop();
 			clearCurrentPattern();

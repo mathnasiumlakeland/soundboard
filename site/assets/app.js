@@ -11,6 +11,13 @@ const COOLDOWN_TICK_MS = 250;
 const PRESS_DURATION_MS = 90;
 const COUNTDOWN_BUTTON_ID = "67";
 const UNLOCK_COUNTDOWN_STEP_MS = 1000;
+const COUNTDOWN_ERROR_HAPTIC_PATTERN = [
+	{ duration: 40, intensity: 0.7 },
+	{ delay: 40, duration: 40, intensity: 0.7 },
+	{ delay: 40, duration: 40, intensity: 0.9 },
+	{ delay: 40, duration: 50, intensity: 0.6 }
+];
+const COUNTDOWN_BUZZ_DURATION_MS = 30000;
 
 const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
@@ -44,6 +51,32 @@ let activeUnlockCountdown = null;
 
 function triggerPressHaptic() {
 	void haptics.trigger("success");
+}
+
+function getHapticPatternDuration(pattern) {
+	return pattern.reduce((total, entry) => total + (entry.delay ?? 0) + entry.duration, 0);
+}
+
+function cloneHapticPattern(pattern, extraDelay = 0) {
+	return pattern.map((entry, index) => ({
+		...entry,
+		delay: (entry.delay ?? 0) + (index === 0 ? extraDelay : 0)
+	}));
+}
+
+function create67CountdownHapticPattern() {
+	const countdownErrorGapMs = Math.max(0, UNLOCK_COUNTDOWN_STEP_MS - getHapticPatternDuration(COUNTDOWN_ERROR_HAPTIC_PATTERN));
+
+	return [
+		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN),
+		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
+		...cloneHapticPattern(COUNTDOWN_ERROR_HAPTIC_PATTERN, countdownErrorGapMs),
+		{
+			delay: countdownErrorGapMs,
+			duration: COUNTDOWN_BUZZ_DURATION_MS,
+			intensity: 1
+		}
+	];
 }
 
 function isUnlockCountdownVisible() {
@@ -491,14 +524,13 @@ async function startUnlockCountdown(button) {
 
 	activeUnlockCountdown = (async () => {
 		playbackToken += 1;
-		stopCurrentPlayback();
+		stopCurrentPlayback({ preserveSequence: true });
 		document.body.classList.add("is-countdown-active");
 		document.addEventListener("keydown", handleUnlockCountdownKeydown, true);
 
 		for (const count of [3, 2, 1]) {
 			showUnlockCountdownStep(count);
 			setAnnouncement(count === 3 ? `${label} unlocked. 3.` : `${count}.`);
-			void haptics.trigger("error");
 			await wait(UNLOCK_COUNTDOWN_STEP_MS);
 		}
 
@@ -586,6 +618,7 @@ async function ensureButtonAccess(button) {
 
 function requestPassword(button) {
 	const label = button.dataset.label ?? "this sound";
+	const id = button.dataset.id;
 	const expectedPassword = button.dataset.password;
 
 	if (!passwordModal || !passwordModalPanel || !passwordForm || !passwordInput || !passwordModalTitle || !expectedPassword) {
@@ -630,7 +663,11 @@ function requestPassword(button) {
 			}
 
 			if (passwordInput.value === expectedPassword) {
-				triggerPressHaptic();
+				if (id === COUNTDOWN_BUTTON_ID) {
+					void haptics.startSequence(create67CountdownHapticPattern());
+				} else {
+					triggerPressHaptic();
+				}
 				cleanup("accepted");
 				return;
 			}
@@ -649,10 +686,6 @@ function requestPassword(button) {
 
 			if (isSettling) {
 				return;
-			}
-
-			if (event.currentTarget instanceof HTMLButtonElement) {
-				triggerPressHaptic();
 			}
 
 			cleanup("cancelled");
@@ -684,12 +717,15 @@ function requestPassword(button) {
 	return promise;
 }
 
-function stopCurrentPlayback() {
+function stopCurrentPlayback({ preserveSequence = false } = {}) {
 	if (!audio) {
 		return;
 	}
 
 	haptics.stopLoop();
+	if (!preserveSequence) {
+		haptics.stopSequence();
+	}
 
 	if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
 		resetUnlockCountdownUi();
@@ -798,7 +834,7 @@ async function playButton(button) {
 	const playbackUrl = resolvedCachedObjectUrl ?? sourceUrl;
 
 	try {
-		stopCurrentPlayback();
+		stopCurrentPlayback({ preserveSequence: id === COUNTDOWN_BUTTON_ID });
 		audio.dataset.activeId = id;
 		audio.src = playbackUrl;
 		button.classList.add("is-playing");
@@ -810,6 +846,7 @@ async function playButton(button) {
 
 		delete audio.dataset.activeId;
 		if (id === COUNTDOWN_BUTTON_ID) {
+			haptics.stopSequence();
 			resetUnlockCountdownUi();
 		}
 
@@ -824,8 +861,6 @@ async function playButton(button) {
 	}
 
 	if (id === COUNTDOWN_BUTTON_ID) {
-		haptics.startLoop("buzz");
-
 		if (!resolvedCachedObjectUrl) {
 			void warmSound(button);
 		}
@@ -911,6 +946,7 @@ updateAllButtonCooldownStates();
 if (audio) {
 	audio.addEventListener("ended", () => {
 		haptics.stopLoop();
+		haptics.stopSequence();
 		buttons.forEach((button) => button.classList.remove("is-playing"));
 		if (audio.dataset.activeId === COUNTDOWN_BUTTON_ID) {
 			resetUnlockCountdownUi();
