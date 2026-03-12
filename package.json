@@ -1,0 +1,7 @@
+{
+	"name": "soundboard",
+	"private": true,
+	"scripts": {
+		"dev": "bunx serve site -l 4173 -n"
+	}
+}

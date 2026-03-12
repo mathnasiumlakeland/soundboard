@@ -2,16 +2,17 @@
 
 Static GitHub Pages site for `soundboard.mathnasium.pro`.
 
-## Publish
+## Local preview
 
-1. Push this repository to GitHub.
-2. In the repository settings, go to `Pages`.
-3. Set `Source` to `GitHub Actions`.
-4. Under `Custom domain`, enter `soundboard.mathnasium.pro`.
-5. Keep the Namecheap DNS record:
-   - `CNAME`
-   - `Host`: `soundboard`
-   - `Target`: `mathnasiumlakeland.github.io`
+Use Bun to serve the static `site/` directory locally:
+
+```bash
+bun run dev
+```
+
+Then open `http://localhost:4173`.
+
+The script runs `bunx serve site -l 4173 -n` under the hood.
 
 ## Site files
 

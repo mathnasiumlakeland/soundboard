@@ -1,3 +1,5 @@
+import { buttonData } from "./buttons.js";
+
 const SOUND_CACHE_NAME = "mathnasium-soundboard-v1";
 const CACHE_META_KEY = "mathnasium-soundboard-cache-meta-v1";
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -11,7 +13,7 @@ const statusText = {
 	error: "Playback error"
 };
 
-const buttons = [...document.querySelectorAll("[data-sound]")];
+const buttonGrid = document.querySelector(".instants");
 const announcement = document.querySelector("#announcement");
 const audio = document.querySelector("#soundboard-audio");
 const passwordModal = document.querySelector("#password-modal");
@@ -19,12 +21,66 @@ const passwordForm = document.querySelector("#password-form");
 const passwordInput = document.querySelector("#password-input");
 const passwordModalTitle = document.querySelector("#password-modal-title");
 const passwordCancelButtons = [...document.querySelectorAll("[data-password-cancel]")];
+const labelCollator = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base"
+});
 
 const objectUrlById = new Map();
 const warmupById = new Map();
 const pressTimeoutById = new Map();
+let buttons = [];
 let playbackToken = 0;
 let activePasswordRequest = null;
+
+function createButtonCard(entry) {
+	const article = document.createElement("article");
+	article.className = "instant";
+
+	const background = document.createElement("div");
+	background.className = "circle small-button-background";
+	background.style.backgroundColor = entry.color;
+
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className = "small-button";
+	button.dataset.sound = "";
+	button.dataset.id = entry.id;
+	button.dataset.label = entry.label;
+	button.dataset.url = entry.url;
+	button.setAttribute("aria-label", `Play ${entry.label}`);
+
+	if (entry.password) {
+		button.dataset.password = entry.password;
+	}
+
+	const shadow = document.createElement("div");
+	shadow.className = "small-button-shadow";
+	shadow.setAttribute("aria-hidden", "true");
+
+	const label = document.createElement("span");
+	label.className = "instant-link";
+	label.textContent = entry.label;
+
+	article.append(background, button, shadow, label);
+	return article;
+}
+
+function renderButtons(entries) {
+	if (!buttonGrid) {
+		return [];
+	}
+
+	const fragment = document.createDocumentFragment();
+	const sortedEntries = [...entries].sort((left, right) => labelCollator.compare(left.label, right.label));
+
+	for (const entry of sortedEntries) {
+		fragment.append(createButtonCard(entry));
+	}
+
+	buttonGrid.replaceChildren(fragment);
+	return [...buttonGrid.querySelectorAll("[data-sound]")];
+}
 
 function setAnnouncement(message) {
 	if (announcement) {
@@ -416,19 +472,24 @@ async function playButton(button) {
 	});
 }
 
-buttons.forEach((button) => {
-	button.addEventListener("pointerdown", () => {
-		void playButton(button);
-	});
+function bindButtonInteractions() {
+	buttons.forEach((button) => {
+		button.addEventListener("pointerdown", () => {
+			void playButton(button);
+		});
 
-	button.addEventListener("click", (event) => {
-		if (event.detail !== 0) {
-			return;
-		}
+		button.addEventListener("click", (event) => {
+			if (event.detail !== 0) {
+				return;
+			}
 
-		void playButton(button);
+			void playButton(button);
+		});
 	});
-});
+}
+
+buttons = renderButtons(buttonData);
+bindButtonInteractions();
 
 if (audio) {
 	audio.addEventListener("ended", () => {
