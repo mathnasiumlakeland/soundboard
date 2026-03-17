@@ -12,6 +12,12 @@ export const buttonData = [
 		color: "#00ff12"
 	},
 	{
+		id: "clown-circus-music",
+		label: "Clown Circus Music",
+		url: "https://www.myinstants.com/media/sounds/clown-circus-music.mp3",
+		color: "#ffa726"
+	},
+	{
 		id: "are-you-sure-about-that",
 		label: "Are You Sure About That",
 		url: "https://www.myinstants.com/media/sounds/are-you-sure-about-that.mp3",
