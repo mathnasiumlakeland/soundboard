@@ -13,7 +13,7 @@ export const buttonData = [
 	},
 	{
 		id: "clown-circus-music",
-		label: "Clown Circus Music",
+		label: "🤡",
 		url: "https://www.myinstants.com/media/sounds/clown-circus-music.mp3",
 		color: "#ffa726"
 	},
