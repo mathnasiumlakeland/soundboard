@@ -634,6 +634,5 @@ body.is-countdown-active {
 	}
 
 	.unlock-countdown-number {
-		--unlock-number-offset: 0px;
-	}
+		--unlock-number-offset: 0px;	}
 }

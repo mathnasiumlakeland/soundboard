@@ -741,6 +741,7 @@ function requestPassword(button) {
 					void warmSound(button);
 					showAcceptedPasswordState("Correct. God help us");
 					setAnnouncement("Correct. God help us");
+					activePasswordRequest?.resolve("accepted");
 					feedbackTimeout = window.setTimeout(() => {
 						void haptics.startSequence(create67CountdownHapticPattern());
 						cleanup("accepted");
@@ -894,14 +895,14 @@ async function playButton(button, { shouldPulse = true } = {}) {
 
 	const countdownWarmupPromise = id === COUNTDOWN_BUTTON_ID && button.dataset.password ? warmSound(button) : null;
 
-	if (id === COUNTDOWN_BUTTON_ID && button.dataset.password) {
-		const countdownCompleted = await startUnlockCountdown(button);
-		if (!countdownCompleted) {
+	const shouldUseUnlockCountdown = id === COUNTDOWN_BUTTON_ID && button.dataset.password;
+	if (shouldUseUnlockCountdown) {
+		if (activeUnlockCountdown) {
 			return;
 		}
-	}
 
-	if (activeUnlockCountdown) {
+		void startUnlockCountdown(button);
+	} else if (activeUnlockCountdown) {
 		return;
 	}
 

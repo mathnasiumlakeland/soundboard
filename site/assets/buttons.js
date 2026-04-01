@@ -32,7 +32,7 @@ export const buttonData = [
 	{
 		id: "67",
 		label: "67",
-		url: "https://www.myinstants.com/media/sounds/67_SQlv2Xv.mp3",
+		url: "https://www.myinstants.com/media/sounds/ay-67-kid-original-short.mp3",
 		color: "#e1a3ff",
 		password: "67password67"
 	},
