@@ -119,5 +119,11 @@ export const buttonData = [
 		label: "Jeopardy",
 		url: "https://www.myinstants.com/media/sounds/jeopardy-themelq.mp3",
 		color: "#ffca2c"
+	},
+	{
+		id: "why-you-crying-original",
+		label: "😭",
+		url: "https://www.myinstants.com/media/sounds/why-you-crying-original.mp3",
+		color: "#5c5c5c"
 	}
 ];
