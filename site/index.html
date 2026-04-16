@@ -15,6 +15,11 @@
 			type="font/ttf"
 			crossorigin
 		/>
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+			crossorigin="anonymous"
+		/>
 		<link rel="stylesheet" href="./assets/styles.css" />
 	</head>
 	<body>
@@ -37,6 +42,10 @@
 			>
 				<form id="password-form" class="password-form">
 					<h2 id="password-modal-title" class="password-modal-title">Enter password</h2>
+					<div id="password-challenge" class="password-challenge" hidden>
+						<div id="password-challenge-equation" class="password-challenge-equation"></div>
+						<p id="password-challenge-instructions" class="password-challenge-instructions"></p>
+					</div>
 					<input
 						id="password-input"
 						class="password-input"
@@ -72,6 +81,11 @@
 		</p>
 		<audio id="soundboard-audio" preload="none"></audio>
 
+		<script
+			defer
+			src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+			crossorigin="anonymous"
+		></script>
 		<script type="module" src="./assets/app.js"></script>
 	</body>
 </html>

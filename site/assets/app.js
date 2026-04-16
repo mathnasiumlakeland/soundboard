@@ -13,6 +13,11 @@ const PRESS_DURATION_MS = 90;
 const POINTER_CLICK_SUPPRESSION_MS = 400;
 const COUNTDOWN_BUTTON_ID = "67";
 const UNLOCK_COUNTDOWN_STEP_MS = 1000;
+const COUNTDOWN_PASSWORD_LATEX = String.raw`\int_{-2}^{2}\left(x^3 \cos \frac{x}{2} + \frac{1}{2}\right)\sqrt{4-x^2}\,dx`;
+const COUNTDOWN_PASSWORD_FALLBACK_TEXT = "Integral from -2 to 2 of (x^3 cos(x/2) + 1/2) times sqrt(4 - x^2) dx";
+// const COUNTDOWN_PASSWORD_PROMPT = "Enter the password for the 67 button";
+const COUNTDOWN_PASSWORD_PROMPT = "Password required for the 67 button";
+const COUNTDOWN_PASSWORD_INSTRUCTIONS = "Enter the first five digits + 67";
 const COUNTDOWN_ERROR_HAPTIC_PATTERN = [
 	{ duration: 40, intensity: 0.7 },
 	{ delay: 40, duration: 40, intensity: 0.7 },
@@ -29,6 +34,9 @@ const passwordModalPanel = document.querySelector(".password-modal-panel");
 const passwordForm = document.querySelector("#password-form");
 const passwordInput = document.querySelector("#password-input");
 const passwordModalTitle = document.querySelector("#password-modal-title");
+const passwordChallenge = document.querySelector("#password-challenge");
+const passwordChallengeEquation = document.querySelector("#password-challenge-equation");
+const passwordChallengeInstructions = document.querySelector("#password-challenge-instructions");
 const passwordCancelButtons = [...document.querySelectorAll("[data-password-cancel]")];
 const unlockCountdown = document.querySelector("#unlock-countdown");
 const unlockCountdownStage = document.querySelector(".unlock-countdown-stage");
@@ -601,16 +609,47 @@ async function startUnlockCountdown(button) {
 	return true;
 }
 
-function resetPasswordModalState(label) {
+function resetPasswordModalState(button) {
+	const label = button?.dataset.label ?? "this sound";
+	const isCountdownButton = button?.dataset.id === COUNTDOWN_BUTTON_ID;
+
 	if (passwordModalTitle) {
-		passwordModalTitle.textContent = `Enter password for ${label} button`;
+		passwordModalTitle.textContent = isCountdownButton
+			? COUNTDOWN_PASSWORD_PROMPT
+			: `Enter password for ${label} button`;
 		passwordModalTitle.classList.remove("is-error");
+	}
+
+	if (passwordChallenge) {
+		passwordChallenge.hidden = !isCountdownButton;
+	}
+
+	if (passwordChallengeInstructions) {
+		passwordChallengeInstructions.textContent = isCountdownButton ? COUNTDOWN_PASSWORD_INSTRUCTIONS : "";
+	}
+
+	if (passwordChallengeEquation) {
+		passwordChallengeEquation.replaceChildren();
+
+		if (isCountdownButton && window.katex?.render) {
+			window.katex.render(COUNTDOWN_PASSWORD_LATEX, passwordChallengeEquation, {
+				displayMode: true,
+				throwOnError: false
+			});
+		} else if (isCountdownButton) {
+			passwordChallengeEquation.textContent = COUNTDOWN_PASSWORD_FALLBACK_TEXT;
+		}
 	}
 
 	if (passwordInput) {
 		passwordInput.value = "";
 		passwordInput.disabled = false;
 		passwordInput.classList.remove("is-error");
+		passwordInput.inputMode = isCountdownButton ? "numeric" : "text";
+		passwordInput.setAttribute(
+			"aria-label",
+			isCountdownButton ? "Enter the first five digits of the answer" : "Password"
+		);
 	}
 
 	if (passwordModalPanel) {
@@ -704,7 +743,7 @@ function requestPassword(button) {
 	}
 
 	passwordModal.hidden = false;
-	resetPasswordModalState(label);
+	resetPasswordModalState(button);
 
 	const promise = new Promise((resolve) => {
 		activePasswordRequest = { resolve, promise: null };
@@ -717,7 +756,7 @@ function requestPassword(button) {
 			}
 
 			passwordModal.hidden = true;
-			resetPasswordModalState(label);
+			resetPasswordModalState(button);
 			passwordForm.removeEventListener("submit", handleSubmit);
 			passwordCancelButtons.forEach((cancelButton) => {
 				cancelButton.removeEventListener("click", handleCancel);
@@ -739,8 +778,8 @@ function requestPassword(button) {
 				if (id === COUNTDOWN_BUTTON_ID) {
 					isSettling = true;
 					void warmSound(button);
-					showAcceptedPasswordState("Correct. God help us");
-					setAnnouncement("Correct. God help us");
+					showAcceptedPasswordState("Correct. God, help us");
+					setAnnouncement("Correct. God, help us");
 					activePasswordRequest?.resolve("accepted");
 					feedbackTimeout = window.setTimeout(() => {
 						void haptics.startSequence(create67CountdownHapticPattern());

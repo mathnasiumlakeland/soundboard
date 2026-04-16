@@ -34,7 +34,7 @@ export const buttonData = [
 		label: "67",
 		url: "https://www.myinstants.com/media/sounds/ay-67-kid-original-short.mp3",
 		color: "#e1a3ff",
-		password: "67password67"
+		password: "31482"
 	},
 	{
 		id: "21",
