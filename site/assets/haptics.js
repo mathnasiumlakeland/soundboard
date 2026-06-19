@@ -16,7 +16,19 @@ const PRESETS = {
 	buzz: [{ duration: 1000, intensity: 1 }]
 };
 
-const supportsVibration = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+function isAppleTouchDevice() {
+	if (typeof navigator === "undefined") {
+		return false;
+	}
+
+	const userAgent = navigator.userAgent ?? "";
+	const platform = navigator.platform ?? "";
+	return /\b(iPad|iPhone|iPod)\b/.test(userAgent) || (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+const prefersSwitchFallback = isAppleTouchDevice();
+const supportsVibration =
+	!prefersSwitchFallback && typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
 
 function clampIntensity(value) {
 	return Math.max(0, Math.min(1, value));
@@ -297,6 +309,10 @@ export function createHaptics() {
 		}
 
 		clearCurrentPattern("loop");
+	}
+
+	if (prefersSwitchFallback) {
+		ensureFallbackControl();
 	}
 
 	return {
