@@ -97,6 +97,12 @@ export const buttonData = [
 		color: "#ff4f8b"
 	},
 	{
+		id: "legalize-comedy",
+		label: "Legalize Comedy",
+		url: "https://www.myinstants.com/media/sounds/legalize-comedy.mp3",
+		color: "#9c7fff"
+	},
+	{
 		id: "yay",
 		label: "Yay",
 		url: "https://www.myinstants.com/media/sounds/kids-saying-yay-sound-effect_3.mp3",
