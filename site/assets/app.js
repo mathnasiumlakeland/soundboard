@@ -116,6 +116,14 @@ function createButtonCard(entry) {
 		button.dataset.password = entry.password;
 	}
 
+	const hapticSwitch = document.createElement("input");
+	hapticSwitch.type = "checkbox";
+	hapticSwitch.className = "button-haptic-switch";
+	hapticSwitch.dataset.hapticSwitch = "";
+	hapticSwitch.tabIndex = -1;
+	hapticSwitch.setAttribute("switch", "");
+	hapticSwitch.setAttribute("aria-hidden", "true");
+
 	const cooldownOverlay = document.createElement("div");
 	cooldownOverlay.className = "button-cooldown-overlay";
 	cooldownOverlay.hidden = true;
@@ -133,7 +141,12 @@ function createButtonCard(entry) {
 	label.className = "instant-link";
 	label.textContent = entry.label;
 
-	article.append(background, button, cooldownOverlay, shadow, label);
+	if (haptics.usesDirectSwitchTap) {
+		article.append(background, button, hapticSwitch, cooldownOverlay, shadow, label);
+	} else {
+		article.append(background, button, cooldownOverlay, shadow, label);
+	}
+
 	return article;
 }
 
@@ -316,6 +329,11 @@ function updateButtonCooldownState(button) {
 
 	if (overlay) {
 		overlay.hidden = !isLocked;
+	}
+
+	const hapticSwitch = instant?.querySelector("[data-haptic-switch]");
+	if (hapticSwitch instanceof HTMLInputElement) {
+		hapticSwitch.disabled = isLocked;
 	}
 
 	if (timer) {
@@ -916,7 +934,7 @@ async function warmSound(button) {
 	return warmup;
 }
 
-async function playButton(button, { shouldPulse = true } = {}) {
+async function playButton(button, { shouldPulse = true, shouldTriggerHaptic = true } = {}) {
 	const id = button.dataset.id;
 	const label = button.dataset.label;
 	const sourceUrl = button.dataset.url;
@@ -925,7 +943,9 @@ async function playButton(button, { shouldPulse = true } = {}) {
 		return;
 	}
 
-	triggerPressHaptic();
+	if (shouldTriggerHaptic) {
+		triggerPressHaptic();
+	}
 
 	const hasAccess = await ensureButtonAccess(button);
 	if (!hasAccess) {
@@ -1024,7 +1044,18 @@ function getButtonFromEventTarget(target) {
 	}
 
 	const button = target.closest("[data-sound]");
-	return button instanceof HTMLButtonElement ? button : null;
+	if (button instanceof HTMLButtonElement) {
+		return button;
+	}
+
+	const hapticSwitch = target.closest("[data-haptic-switch]");
+	const hapticInstant = hapticSwitch?.closest(".instant");
+	const hapticButton = hapticInstant?.querySelector("[data-sound]");
+	return hapticButton instanceof HTMLButtonElement ? hapticButton : null;
+}
+
+function isHapticSwitchEventTarget(target) {
+	return target instanceof Element && Boolean(target.closest("[data-haptic-switch]"));
 }
 
 function bindButtonInteractions() {
@@ -1047,6 +1078,9 @@ function bindButtonInteractions() {
 		rememberPointerPress(button);
 
 		if (haptics.requiresClickGesture) {
+			if (isHapticSwitchEventTarget(event.target)) {
+				pulseButton(button);
+			}
 			return;
 		}
 
@@ -1075,7 +1109,8 @@ function bindButtonInteractions() {
 		}
 
 		void playButton(button, {
-			shouldPulse: !hasRecentPointerRecord(button, lastPointerPress)
+			shouldPulse: !hasRecentPointerRecord(button, lastPointerPress),
+			shouldTriggerHaptic: !isHapticSwitchEventTarget(event.target)
 		});
 	});
 }

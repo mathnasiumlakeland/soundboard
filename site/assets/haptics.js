@@ -317,6 +317,7 @@ export function createHaptics() {
 
 	return {
 		requiresClickGesture: !supportsVibration,
+		usesDirectSwitchTap: prefersSwitchFallback,
 		trigger(name) {
 			const pattern = clonePattern(name);
 			if (!pattern) {
